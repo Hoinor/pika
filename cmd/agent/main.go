@@ -403,7 +403,7 @@ func registerAgent(cmd *cobra.Command, args []string) {
 		log.Printf("📡 服务端地址: %s (来自命令行参数)", endpoint)
 	} else {
 		for {
-			fmt.Print("📡 请输入服务端地址 (例如: http://your-server.com:18888): ")
+			fmt.Print("📡 请输入服务端地址 (例如: http://your-server.com:8080): ")
 			input, _ := reader.ReadString('\n')
 			endpoint = strings.TrimSpace(input)
 			if endpoint != "" {

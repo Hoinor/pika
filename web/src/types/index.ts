@@ -175,6 +175,70 @@ export interface HostMetric {
     timestamp: number;       // 时间戳（毫秒）
 }
 
+// Docker 容器指标
+export interface DockerMetric {
+    id: number;
+    agentId: string;
+    containerId: string;
+    name: string;
+    image: string;
+    state: string;
+    status: string;
+    cpuPercent: number;
+    memoryUsage: number;
+    memoryLimit: number;
+    memoryPercent: number;
+    netInput: number;
+    netOutput: number;
+    blockInput: number;
+    blockOutput: number;
+    pids: number;
+    timestamp: number;
+}
+
+// GPU 指标
+export interface GPUMetric {
+    id: number;
+    agentId: string;
+    index: number;
+    name: string;
+    utilization: number;
+    memoryTotal: number;
+    memoryUsed: number;
+    memoryFree: number;
+    temperature: number;
+    powerDraw: number;
+    fanSpeed: number;
+    performanceState: string;
+    timestamp: number;
+}
+
+// 温度指标
+export interface TemperatureMetric {
+    id: number;
+    agentId: string;
+    sensorKey: string;
+    sensorLabel: string;
+    temperature: number;
+    timestamp: number;
+}
+
+// 磁盘IO指标
+export interface DiskIOMetric {
+    id: number;
+    agentId: string;
+    device: string;
+    readCount: number;
+    writeCount: number;
+    readBytes: number;
+    writeBytes: number;
+    readTime: number;
+    writeTime: number;
+    ioTime: number;
+    iopsInProgress: number;
+    timestamp: number;
+}
+
 export interface LatestMetrics {
     cpu?: CPUMetric;
     memory?: MemoryMetric;
@@ -182,6 +246,9 @@ export interface LatestMetrics {
     network?: NetworkSummary; // 改为汇总数据
     load?: LoadMetric;
     host?: HostMetric;        // 主机信息
+    docker?: DockerMetric[];  // Docker 容器列表
+    gpu?: GPUMetric[];        // GPU 列表
+    temperature?: TemperatureMetric[];  // 温度传感器列表
 }
 
 // 用户管理相关
@@ -234,20 +301,6 @@ export interface AlertRules {
     networkDuration: number;
 }
 
-export interface NotificationConfig {
-    dingTalkEnabled: boolean;
-    dingTalkWebhook: string;
-    dingTalkSecret: string;
-    weComEnabled: boolean;
-    weComWebhook: string;
-    feishuEnabled: boolean;
-    feishuWebhook: string;
-    emailEnabled: boolean;
-    emailAddresses: string[];
-    customWebhookEnabled: boolean;
-    customWebhookUrl: string;
-}
-
 export interface AlertConfig {
     id?: string;
     agentId: string;
@@ -255,9 +308,46 @@ export interface AlertConfig {
     name: string;
     enabled: boolean;
     rules: AlertRules;
-    notification: NotificationConfig;
+    notificationChannelIds: string[]; // 通知渠道类型列表（dingtalk, wecom, feishu, webhook）
     createdAt?: number;
     updatedAt?: number;
+}
+
+// 通知渠道配置（通过 type 标识，不再使用独立ID）
+export interface NotificationChannel {
+    type: 'dingtalk' | 'wecom' | 'feishu' | 'email' | 'webhook'; // 渠道类型，作为唯一标识
+    enabled: boolean; // 是否启用
+    config: Record<string, any>; // JSON配置，根据type不同而不同
+}
+
+// 各种通知渠道的配置类型
+export interface DingTalkConfig {
+    secretKey: string;      // 访问令牌
+    signSecret?: string;    // 加签密钥（可选）
+}
+
+export interface WeComConfig {
+    secretKey: string;      // Webhook Key
+}
+
+export interface FeishuConfig {
+    secretKey: string;      // Webhook Token
+    signSecret?: string;    // 签名密钥（可选）
+}
+
+export interface WebhookConfig {
+    url: string;            // 自定义URL
+    method?: string;        // HTTP方法，默认POST
+    headers?: Record<string, string>; // 自定义请求头
+}
+
+export interface EmailConfig {
+    smtpHost: string;
+    smtpPort: number;
+    username: string;
+    password: string;
+    from: string;
+    to: string[];
 }
 
 export interface AlertRecord {

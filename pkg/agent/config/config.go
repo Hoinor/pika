@@ -37,6 +37,9 @@ type ServerConfig struct {
 
 	// API Key
 	APIKey string `yaml:"api_key"`
+
+	// 是否跳过 TLS 证书验证（仅用于测试环境，生产环境不建议开启）
+	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
 }
 
 // AgentConfig Agent 配置
@@ -71,8 +74,9 @@ type AutoUpdateConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Endpoint: "http://localhost:8080",
-			APIKey:   "",
+			Endpoint:           "http://localhost:8080",
+			APIKey:             "",
+			InsecureSkipVerify: false,
 		},
 		Agent: AgentConfig{
 			Name: "",
@@ -205,16 +209,19 @@ func (c *Config) GetUpdateCheckInterval() time.Duration {
 
 // GetWebSocketURL 获取 WebSocket 连接地址
 func (c *Config) GetWebSocketURL() string {
-	endpoint := c.Server.Endpoint
-	// 将 http:// 替换为 ws://，https:// 替换为 wss://
-	if len(endpoint) >= 7 && endpoint[:7] == "http://" {
-		return "ws://" + endpoint[7:] + "/ws/agent"
+	u, err := url.Parse(c.Server.Endpoint)
+	if err != nil {
+		// 解析失败时，使用默认的 ws:// 协议
+		return "ws://" + c.Server.Endpoint + "/ws/agent"
 	}
-	if len(endpoint) >= 8 && endpoint[:8] == "https://" {
-		return "wss://" + endpoint[8:] + "/ws/agent"
+
+	// 根据 HTTP 协议转换为对应的 WebSocket 协议
+	scheme := "ws"
+	if u.Scheme == "https" {
+		scheme = "wss"
 	}
-	// 如果没有协议前缀，默认使用 ws://
-	return "ws://" + endpoint + "/ws/agent"
+
+	return fmt.Sprintf("%s://%s/ws/agent", scheme, u.Host)
 }
 
 // GetUpdateURL 获取更新检查地址

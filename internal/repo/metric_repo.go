@@ -57,6 +57,71 @@ func (r *MetricRepo) SaveTemperatureMetric(ctx context.Context, metric *models.T
 	return r.db.WithContext(ctx).Create(metric).Error
 }
 
+// SaveDockerMetric 保存Docker容器指标
+func (r *MetricRepo) SaveDockerMetric(ctx context.Context, metric *models.DockerMetric) error {
+	return r.db.WithContext(ctx).Create(metric).Error
+}
+
+// GetLatestDockerMetrics 获取最新的Docker容器指标列表
+func (r *MetricRepo) GetLatestDockerMetrics(ctx context.Context, agentID string) ([]models.DockerMetric, error) {
+	var metrics []models.DockerMetric
+	// 获取每个容器的最新记录
+	err := r.db.WithContext(ctx).
+		Raw(`
+			SELECT d1.* FROM docker_metrics d1
+			INNER JOIN (
+				SELECT container_id, MAX(timestamp) as max_timestamp
+				FROM docker_metrics
+				WHERE agent_id = ?
+				GROUP BY container_id
+			) d2 ON d1.container_id = d2.container_id AND d1.timestamp = d2.max_timestamp
+			WHERE d1.agent_id = ?
+			ORDER BY d1.name
+		`, agentID, agentID).
+		Scan(&metrics).Error
+	return metrics, err
+}
+
+// GetLatestGPUMetrics 获取最新的GPU指标列表
+func (r *MetricRepo) GetLatestGPUMetrics(ctx context.Context, agentID string) ([]models.GPUMetric, error) {
+	var metrics []models.GPUMetric
+	// 获取每个GPU的最新记录
+	err := r.db.WithContext(ctx).
+		Raw(`
+			SELECT g1.* FROM gpu_metrics g1
+			INNER JOIN (
+				SELECT index, MAX(timestamp) as max_timestamp
+				FROM gpu_metrics
+				WHERE agent_id = ?
+				GROUP BY index
+			) g2 ON g1.index = g2.index AND g1.timestamp = g2.max_timestamp
+			WHERE g1.agent_id = ?
+			ORDER BY g1.index
+		`, agentID, agentID).
+		Scan(&metrics).Error
+	return metrics, err
+}
+
+// GetLatestTemperatureMetrics 获取最新的温度指标列表
+func (r *MetricRepo) GetLatestTemperatureMetrics(ctx context.Context, agentID string) ([]models.TemperatureMetric, error) {
+	var metrics []models.TemperatureMetric
+	// 获取每个传感器的最新记录
+	err := r.db.WithContext(ctx).
+		Raw(`
+			SELECT t1.* FROM temperature_metrics t1
+			INNER JOIN (
+				SELECT sensor_key, MAX(timestamp) as max_timestamp
+				FROM temperature_metrics
+				WHERE agent_id = ?
+				GROUP BY sensor_key
+			) t2 ON t1.sensor_key = t2.sensor_key AND t1.timestamp = t2.max_timestamp
+			WHERE t1.agent_id = ?
+			ORDER BY t1.sensor_key
+		`, agentID, agentID).
+		Scan(&metrics).Error
+	return metrics, err
+}
+
 // SaveHostMetric 保存主机信息指标（只保留最新的一条记录）
 func (r *MetricRepo) SaveHostMetric(ctx context.Context, metric *models.HostMetric) error {
 	// 使用事务确保原子性
@@ -98,6 +163,7 @@ func (r *MetricRepo) DeleteOldMetrics(ctx context.Context, beforeTimestamp int64
 		&models.DiskIOMetric{},
 		&models.GPUMetric{},
 		&models.TemperatureMetric{},
+		&models.DockerMetric{},
 	}
 
 	// 对每个表进行分批删除

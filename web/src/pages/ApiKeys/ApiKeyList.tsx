@@ -1,7 +1,7 @@
 import {useRef, useState} from 'react';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Form, Input, message as antMessage, Modal, Popconfirm, Tag,} from 'antd';
+import {App, Button, Divider, Form, Input, message as antMessage, Modal, Popconfirm, Tag,} from 'antd';
 import {Copy, Edit, Eye, EyeOff, Plus, Power, PowerOff, RefreshCw, Trash2} from 'lucide-react';
 import {
     deleteApiKey,
@@ -259,38 +259,38 @@ const ApiKeyList = () => {
                 ]}
             />
 
-            {/* API密钥列表 */}
-            <div className="rounded-md p-4 border border-gray-200">
-                <ProTable<ApiKey>
+            <Divider/>
 
-                    actionRef={actionRef}
-                    rowKey="id"
-                    search={{labelWidth: 80}}
-                    columns={columns}
-                    pagination={{
-                        defaultPageSize: 10,
-                        showSizeChanger: true,
-                    }}
-                    options={false}
-                    request={async (params) => {
-                        const {current = 1, pageSize = 10, name} = params;
-                        try {
-                            const response = await listApiKeys(current, pageSize, name);
-                            return {
-                                data: response.data.items || [],
-                                success: true,
-                                total: response.data.total,
-                            };
-                        } catch (error: unknown) {
-                            messageApi.error(getErrorMessage(error, '获取API密钥列表失败'));
-                            return {
-                                data: [],
-                                success: false,
-                            };
-                        }
-                    }}
-                />
-            </div>
+            {/* API密钥列表 */}
+            <ProTable<ApiKey>
+
+                actionRef={actionRef}
+                rowKey="id"
+                search={{labelWidth: 80}}
+                columns={columns}
+                pagination={{
+                    defaultPageSize: 10,
+                    showSizeChanger: true,
+                }}
+                options={false}
+                request={async (params) => {
+                    const {current = 1, pageSize = 10, name} = params;
+                    try {
+                        const response = await listApiKeys(current, pageSize, name);
+                        return {
+                            data: response.data.items || [],
+                            success: true,
+                            total: response.data.total,
+                        };
+                    } catch (error: unknown) {
+                        messageApi.error(getErrorMessage(error, '获取API密钥列表失败'));
+                        return {
+                            data: [],
+                            success: false,
+                        };
+                    }
+                }}
+            />
 
             {/* 新建/编辑API密钥弹窗 */}
             <Modal

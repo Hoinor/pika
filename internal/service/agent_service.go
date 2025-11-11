@@ -334,6 +334,41 @@ func (s *AgentService) HandleMetricData(ctx context.Context, agentID string, met
 		}
 		return nil
 
+	case protocol.MetricTypeDocker:
+		// Docker现在是数组,需要批量处理
+		var dockerDataList []protocol.DockerContainerData
+		if err := json.Unmarshal(data, &dockerDataList); err != nil {
+			return err
+		}
+		// 保存每个容器的数据
+		for _, dockerData := range dockerDataList {
+			metric := &models.DockerMetric{
+				AgentID:       agentID,
+				ContainerID:   dockerData.ContainerID,
+				Name:          dockerData.Name,
+				Image:         dockerData.Image,
+				State:         dockerData.State,
+				Status:        dockerData.Status,
+				CPUPercent:    dockerData.CPUPercent,
+				MemoryUsage:   dockerData.MemoryUsage,
+				MemoryLimit:   dockerData.MemoryLimit,
+				MemoryPercent: dockerData.MemoryPercent,
+				NetInput:      dockerData.NetInput,
+				NetOutput:     dockerData.NetOutput,
+				BlockInput:    dockerData.BlockInput,
+				BlockOutput:   dockerData.BlockOutput,
+				Pids:          dockerData.Pids,
+				Timestamp:     now,
+			}
+			if err := s.metricRepo.SaveDockerMetric(ctx, metric); err != nil {
+				s.logger.Error("failed to save docker metric",
+					zap.Error(err),
+					zap.String("agentID", agentID),
+					zap.String("containerID", dockerData.ContainerID))
+			}
+		}
+		return nil
+
 	default:
 		s.logger.Warn("unknown metric type", zap.String("type", metricType))
 		return nil
@@ -443,6 +478,21 @@ func (s *AgentService) GetLatestMetrics(ctx context.Context, agentID string) (*L
 		result.Host = host
 	}
 
+	// 获取最新Docker容器信息
+	if docker, err := s.metricRepo.GetLatestDockerMetrics(ctx, agentID); err == nil && len(docker) > 0 {
+		result.Docker = docker
+	}
+
+	// 获取最新GPU信息
+	if gpu, err := s.metricRepo.GetLatestGPUMetrics(ctx, agentID); err == nil && len(gpu) > 0 {
+		result.GPU = gpu
+	}
+
+	// 获取最新温度信息
+	if temp, err := s.metricRepo.GetLatestTemperatureMetrics(ctx, agentID); err == nil && len(temp) > 0 {
+		result.Temp = temp
+	}
+
 	return result, nil
 }
 
@@ -499,12 +549,15 @@ type NetworkSummary struct {
 
 // LatestMetrics 最新指标数据（用于API响应）
 type LatestMetrics struct {
-	CPU     *models.CPUMetric    `json:"cpu,omitempty"`
-	Memory  *models.MemoryMetric `json:"memory,omitempty"`
-	Disk    *DiskSummary         `json:"disk,omitempty"`
-	Network *NetworkSummary      `json:"network,omitempty"`
-	Load    *models.LoadMetric   `json:"load,omitempty"`
-	Host    *models.HostMetric   `json:"host,omitempty"`
+	CPU     *models.CPUMetric          `json:"cpu,omitempty"`
+	Memory  *models.MemoryMetric       `json:"memory,omitempty"`
+	Disk    *DiskSummary               `json:"disk,omitempty"`
+	Network *NetworkSummary            `json:"network,omitempty"`
+	Load    *models.LoadMetric         `json:"load,omitempty"`
+	Host    *models.HostMetric         `json:"host,omitempty"`
+	Docker  []models.DockerMetric      `json:"docker,omitempty"`
+	GPU     []models.GPUMetric         `json:"gpu,omitempty"`
+	Temp    []models.TemperatureMetric `json:"temperature,omitempty"`
 }
 
 // HandleCommandResponse 处理指令响应

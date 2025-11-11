@@ -65,6 +65,12 @@ func setup(app *orz.App) error {
 		// 不返回错误，因为可能用户已存在
 	}
 
+	// 初始化默认属性配置
+	if err := initDefaultProperties(ctx, components, app.Logger()); err != nil {
+		app.Logger().Error("初始化默认属性配置失败", zap.Error(err))
+		// 不返回错误，继续启动
+	}
+
 	// 启动WebSocket管理器
 	go components.WSManager.Run(ctx)
 
@@ -112,7 +118,6 @@ func setupApi(app *orz.App, components *AppComponents) {
 		logger.Fatal("failed to init custom validator", zap.Error(err))
 	}
 	e.Validator = &customValidator
-	e.IPExtractor = echo.ExtractIPDirect()
 
 	// 公开接口（无需认证）
 	publicApi := e.Group("/api")
@@ -163,6 +168,14 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.GET("/agents/:id/audit/result", components.AgentHandler.GetAuditResult)
 		adminApi.GET("/agents/:id/audit/results", components.AgentHandler.ListAuditResults)
 
+		// 通用属性管理
+		adminApi.GET("/properties/:id", components.PropertyHandler.GetProperty)
+		adminApi.PUT("/properties/:id", components.PropertyHandler.SetProperty)
+		adminApi.DELETE("/properties/:id", components.PropertyHandler.DeleteProperty)
+
+		// 通知渠道测试（从数据库读取配置测试）
+		adminApi.POST("/notification-channels/:type/test", components.PropertyHandler.TestNotificationChannel)
+
 		// 告警配置管理
 		adminApi.GET("/agents/:agentId/alert-configs", components.AlertHandler.ListAlertConfigsByAgent)
 		adminApi.POST("/alert-configs", components.AlertHandler.CreateAlertConfig)
@@ -201,7 +214,9 @@ func autoMigrate(database *gorm.DB) error {
 		&models.GPUMetric{},
 		&models.TemperatureMetric{},
 		&models.HostMetric{},
+		&models.DockerMetric{},
 		&models.AuditResult{},
+		&models.Property{},
 		&models.AlertConfig{},
 		&models.AlertRecord{},
 	)
@@ -241,6 +256,29 @@ func createDefaultUser(ctx context.Context, components *AppComponents, logger *z
 	return nil
 }
 
+// initDefaultProperties 初始化默认属性配置
+func initDefaultProperties(ctx context.Context, components *AppComponents, logger *zap.Logger) error {
+	const propertyIDNotificationChannels = "notification_channels"
+
+	// 检查是否已存在通知渠道配置
+	_, err := components.PropertyService.Get(ctx, propertyIDNotificationChannels)
+	if err == nil {
+		// 配置已存在，跳过初始化
+		logger.Info("通知渠道配置已存在，跳过初始化")
+		return nil
+	}
+
+	// 创建默认空配置
+	emptyChannels := make([]interface{}, 0)
+	err = components.PropertyService.Set(ctx, propertyIDNotificationChannels, "通知渠道配置", emptyChannels)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("默认通知渠道配置初始化成功")
+	return nil
+}
+
 func ErrorHandler(logger *zap.Logger) func(next echo.HandlerFunc) echo.HandlerFunc {
 	var a = func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -249,6 +287,14 @@ func ErrorHandler(logger *zap.Logger) func(next echo.HandlerFunc) echo.HandlerFu
 				if errors.As(err, &he) {
 					return c.JSON(he.Code, orz.Map{
 						"code":    he.Code,
+						"message": err.Error(),
+					})
+				}
+
+				var oe *orz.Error
+				if errors.As(err, &oe) {
+					return c.JSON(400, orz.Map{
+						"code":    oe.Code,
 						"message": err.Error(),
 					})
 				}

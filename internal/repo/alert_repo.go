@@ -28,13 +28,13 @@ func (r *AlertRepo) FindByAgentID(ctx context.Context, agentID string) ([]models
 		Where("agent_id = ?", agentID).
 		Find(&configs).Error
 
-	// 处理 EmailAddresses 和 AgentIDs 的反序列化
+	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
 	for i := range configs {
-		if configs[i].Notification.EmailAddressesStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].Notification.EmailAddressesStr), &configs[i].Notification.EmailAddresses)
-		}
 		if configs[i].AgentIDsStr != "" {
 			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
+		}
+		if configs[i].NotificationChannelIDsStr != "" {
+			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
 		}
 	}
 
@@ -48,13 +48,13 @@ func (r *AlertRepo) FindEnabledByAgentID(ctx context.Context, agentID string) ([
 		Where("agent_id = ? AND enabled = ?", agentID, true).
 		Find(&configs).Error
 
-	// 处理 EmailAddresses 和 AgentIDs 的反序列化
+	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
 	for i := range configs {
-		if configs[i].Notification.EmailAddressesStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].Notification.EmailAddressesStr), &configs[i].Notification.EmailAddresses)
-		}
 		if configs[i].AgentIDsStr != "" {
 			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
+		}
+		if configs[i].NotificationChannelIDsStr != "" {
+			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
 		}
 	}
 
@@ -68,13 +68,13 @@ func (r *AlertRepo) FindAllEnabled(ctx context.Context) ([]models.AlertConfig, e
 		Where("enabled = ?", true).
 		Find(&configs).Error
 
-	// 处理 EmailAddresses 和 AgentIDs 的反序列化
+	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
 	for i := range configs {
-		if configs[i].Notification.EmailAddressesStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].Notification.EmailAddressesStr), &configs[i].Notification.EmailAddresses)
-		}
 		if configs[i].AgentIDsStr != "" {
 			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
+		}
+		if configs[i].NotificationChannelIDsStr != "" {
+			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
 		}
 	}
 
@@ -83,14 +83,14 @@ func (r *AlertRepo) FindAllEnabled(ctx context.Context) ([]models.AlertConfig, e
 
 // CreateAlertConfig 创建告警配置
 func (r *AlertRepo) CreateAlertConfig(ctx context.Context, config *models.AlertConfig) error {
-	// 序列化 EmailAddresses 和 AgentIDs
-	if len(config.Notification.EmailAddresses) > 0 {
-		data, _ := json.Marshal(config.Notification.EmailAddresses)
-		config.Notification.EmailAddressesStr = string(data)
-	}
+	// 序列化 AgentIDs 和 NotificationChannelIDs
 	if len(config.AgentIDs) > 0 {
 		data, _ := json.Marshal(config.AgentIDs)
 		config.AgentIDsStr = string(data)
+	}
+	if len(config.NotificationChannelIDs) > 0 {
+		data, _ := json.Marshal(config.NotificationChannelIDs)
+		config.NotificationChannelIDsStr = string(data)
 	}
 
 	return r.db.WithContext(ctx).Create(config).Error
@@ -98,14 +98,14 @@ func (r *AlertRepo) CreateAlertConfig(ctx context.Context, config *models.AlertC
 
 // UpdateAlertConfig 更新告警配置
 func (r *AlertRepo) UpdateAlertConfig(ctx context.Context, config *models.AlertConfig) error {
-	// 序列化 EmailAddresses 和 AgentIDs
-	if len(config.Notification.EmailAddresses) > 0 {
-		data, _ := json.Marshal(config.Notification.EmailAddresses)
-		config.Notification.EmailAddressesStr = string(data)
-	}
+	// 序列化 AgentIDs 和 NotificationChannelIDs
 	if len(config.AgentIDs) > 0 {
 		data, _ := json.Marshal(config.AgentIDs)
 		config.AgentIDsStr = string(data)
+	}
+	if len(config.NotificationChannelIDs) > 0 {
+		data, _ := json.Marshal(config.NotificationChannelIDs)
+		config.NotificationChannelIDsStr = string(data)
 	}
 
 	return r.db.WithContext(ctx).Save(config).Error
@@ -124,12 +124,12 @@ func (r *AlertRepo) GetAlertConfig(ctx context.Context, id string) (*models.Aler
 		return nil, err
 	}
 
-	// 处理 EmailAddresses 和 AgentIDs 的反序列化
-	if config.Notification.EmailAddressesStr != "" {
-		_ = json.Unmarshal([]byte(config.Notification.EmailAddressesStr), &config.Notification.EmailAddresses)
-	}
+	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
 	if config.AgentIDsStr != "" {
 		_ = json.Unmarshal([]byte(config.AgentIDsStr), &config.AgentIDs)
+	}
+	if config.NotificationChannelIDsStr != "" {
+		_ = json.Unmarshal([]byte(config.NotificationChannelIDsStr), &config.NotificationChannelIDs)
 	}
 
 	return &config, nil

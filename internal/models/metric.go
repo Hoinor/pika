@@ -149,3 +149,28 @@ type HostMetric struct {
 func (HostMetric) TableName() string {
 	return "host_metrics"
 }
+
+// DockerMetric Docker容器指标
+type DockerMetric struct {
+	ID            uint    `gorm:"primaryKey;autoIncrement" json:"id"`
+	AgentID       string  `gorm:"index:idx_agent_time" json:"agentId"`                  // 探针ID
+	ContainerID   string  `gorm:"index" json:"containerId"`                             // 容器ID
+	Name          string  `json:"name"`                                                 // 容器名称
+	Image         string  `json:"image"`                                                // 镜像名称
+	State         string  `json:"state"`                                                // 容器状态
+	Status        string  `json:"status"`                                               // 状态描述
+	CPUPercent    float64 `json:"cpuPercent"`                                           // CPU使用率(%)
+	MemoryUsage   uint64  `json:"memoryUsage"`                                          // 内存使用量(字节)
+	MemoryLimit   uint64  `json:"memoryLimit"`                                          // 内存限制(字节)
+	MemoryPercent float64 `json:"memoryPercent"`                                        // 内存使用率(%)
+	NetInput      uint64  `json:"netInput"`                                             // 网络输入(字节)
+	NetOutput     uint64  `json:"netOutput"`                                            // 网络输出(字节)
+	BlockInput    uint64  `json:"blockInput"`                                           // 磁盘读取(字节)
+	BlockOutput   uint64  `json:"blockOutput"`                                          // 磁盘写入(字节)
+	Pids          int     `json:"pids"`                                                 // 进程数
+	Timestamp     int64   `gorm:"index:idx_agent_time;index:idx_time" json:"timestamp"` // 时间戳（毫秒）
+}
+
+func (DockerMetric) TableName() string {
+	return "docker_metrics"
+}

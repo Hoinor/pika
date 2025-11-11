@@ -34,19 +34,24 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 	userHandler := handler.NewUserHandler(userService)
 	apiKeyHandler := provideApiKeyHandler(logger, apiKeyService)
 	alertRepo := provideAlertRepo(db)
+	propertyRepo := providePropertyRepo(db)
+	propertyService := providePropertyService(propertyRepo, logger)
 	notifier := provideNotifier(logger)
-	alertService := provideAlertService(alertRepo, agentRepo, notifier, logger)
+	alertService := provideAlertService(alertRepo, agentRepo, propertyService, notifier, logger)
 	alertHandler := provideAlertHandler(logger, alertService)
+	propertyHandler := providePropertyHandler(logger, propertyService, notifier)
 	appComponents := &AppComponents{
-		AccountHandler: accountHandler,
-		AgentHandler:   agentHandler,
-		UserHandler:    userHandler,
-		ApiKeyHandler:  apiKeyHandler,
-		AlertHandler:   alertHandler,
-		AgentService:   agentService,
-		UserService:    userService,
-		AlertService:   alertService,
-		WSManager:      manager,
+		AccountHandler:  accountHandler,
+		AgentHandler:    agentHandler,
+		UserHandler:     userHandler,
+		ApiKeyHandler:   apiKeyHandler,
+		AlertHandler:    alertHandler,
+		PropertyHandler: propertyHandler,
+		AgentService:    agentService,
+		UserService:     userService,
+		AlertService:    alertService,
+		PropertyService: propertyService,
+		WSManager:       manager,
 	}
 	return appComponents, nil
 }
@@ -55,13 +60,15 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 
 // AppComponents 应用组件
 type AppComponents struct {
-	AccountHandler *handler.AccountHandler
-	AgentHandler   *handler.AgentHandler
-	UserHandler    *handler.UserHandler
-	ApiKeyHandler  *handler.ApiKeyHandler
-	AlertHandler   *handler.AlertHandler
-	AgentService   *service.AgentService
-	UserService    *service.UserService
-	AlertService   *service.AlertService
-	WSManager      *websocket.Manager
+	AccountHandler  *handler.AccountHandler
+	AgentHandler    *handler.AgentHandler
+	UserHandler     *handler.UserHandler
+	ApiKeyHandler   *handler.ApiKeyHandler
+	AlertHandler    *handler.AlertHandler
+	PropertyHandler *handler.PropertyHandler
+	AgentService    *service.AgentService
+	UserService     *service.UserService
+	AlertService    *service.AlertService
+	PropertyService *service.PropertyService
+	WSManager       *websocket.Manager
 }

@@ -54,9 +54,24 @@ func provideNotifier(logger *zap.Logger) *service.Notifier {
 	return service.NewNotifier(logger)
 }
 
+// providePropertyRepo 提供PropertyRepo
+func providePropertyRepo(db *gorm.DB) *repo.PropertyRepo {
+	return repo.NewPropertyRepo(db)
+}
+
+// providePropertyService 提供PropertyService
+func providePropertyService(propertyRepo *repo.PropertyRepo, logger *zap.Logger) *service.PropertyService {
+	return service.NewPropertyService(propertyRepo, logger)
+}
+
+// providePropertyHandler 提供PropertyHandler
+func providePropertyHandler(logger *zap.Logger, propertyService *service.PropertyService, notifier *service.Notifier) *handler.PropertyHandler {
+	return handler.NewPropertyHandler(logger, propertyService, notifier)
+}
+
 // provideAlertService 提供AlertService
-func provideAlertService(alertRepo *repo.AlertRepo, agentRepo *repo.AgentRepo, notifier *service.Notifier, logger *zap.Logger) *service.AlertService {
-	return service.NewAlertService(alertRepo, agentRepo, notifier, logger)
+func provideAlertService(alertRepo *repo.AlertRepo, agentRepo *repo.AgentRepo, propertyService *service.PropertyService, notifier *service.Notifier, logger *zap.Logger) *service.AlertService {
+	return service.NewAlertService(alertRepo, agentRepo, propertyService, notifier, logger)
 }
 
 // provideAlertHandler 提供AlertHandler

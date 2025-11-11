@@ -1,7 +1,7 @@
 import type {ReactNode} from 'react';
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import {Activity, ArrowLeft, Cpu, HardDrive, Loader2, MemoryStick, Network, Server,} from 'lucide-react';
+import {Activity, ArrowLeft, Cpu, HardDrive, Loader2, MemoryStick, Network, Server, Box, Thermometer, Zap} from 'lucide-react';
 import type {TooltipProps} from 'recharts';
 import {
     Area,
@@ -243,6 +243,7 @@ const ServerDetail = () => {
     const [agent, setAgent] = useState<Agent | null>(null);
     const [latestMetrics, setLatestMetrics] = useState<LatestMetrics | null>(null);
     const [timeRange, setTimeRange] = useState<'1h' | '6h' | '12h' | '24h' | '1d' | '3d' | '7d' | '1w' | '30d' | '1M' | '90d' | '3M'>('1h');
+    const [selectedInterface, setSelectedInterface] = useState<string>('all');
     const [metricsData, setMetricsData] = useState<{
         cpu: AggregatedCPUMetric[];
         memory: AggregatedMemoryMetric[];
@@ -350,13 +351,27 @@ const ServerDetail = () => {
         [metricsData.memory]
     );
 
+    // 获取所有可用的网卡列表
+    const availableInterfaces = useMemo(() => {
+        const interfaces = new Set<string>();
+        metricsData.network.forEach((item) => {
+            interfaces.add(item.interface);
+        });
+        return Array.from(interfaces).sort();
+    }, [metricsData.network]);
+
     const networkChartData = useMemo(() => {
         const aggregated: Record<
             string,
             { time: string; upload: number; download: number }
         > = {};
 
-        metricsData.network.forEach((item) => {
+        // 根据选择的网卡过滤数据
+        const filteredData = selectedInterface === 'all'
+            ? metricsData.network
+            : metricsData.network.filter(item => item.interface === selectedInterface);
+
+        filteredData.forEach((item) => {
             const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -376,7 +391,7 @@ const ServerDetail = () => {
             upload: Number(item.upload.toFixed(2)),
             download: Number(item.download.toFixed(2)),
         }));
-    }, [metricsData.network]);
+    }, [metricsData.network, selectedInterface]);
 
     const snapshotCards = useMemo(() => {
         if (!latestMetrics) {
@@ -767,13 +782,29 @@ const ServerDetail = () => {
                             </div>
 
                             <div>
-                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                    <span
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
-                                        <Network className="h-4 w-4"/>
-                                    </span>
-                                    网络流量（MB）
-                                </h3>
+                                <div className="mb-3 flex items-center justify-between">
+                                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                        <span
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+                                            <Network className="h-4 w-4"/>
+                                        </span>
+                                        网络流量（MB/s）
+                                    </h3>
+                                    {availableInterfaces.length > 0 && (
+                                        <select
+                                            value={selectedInterface}
+                                            onChange={(e) => setSelectedInterface(e.target.value)}
+                                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-sky-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                                        >
+                                            <option value="all">所有网卡</option>
+                                            {availableInterfaces.map((iface) => (
+                                                <option key={iface} value={iface}>
+                                                    {iface}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
                                 {networkChartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={300}>
                                         <LineChart data={networkChartData}>
@@ -819,6 +850,151 @@ const ServerDetail = () => {
                             </div>
                         </div>
                     </Card>
+
+                    {/* GPU 监控 */}
+                    {latestMetrics?.gpu && latestMetrics.gpu.length > 0 && (
+                        <Card title="GPU 监控" description="显卡使用情况和温度监控">
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                {latestMetrics.gpu.map((gpu) => (
+                                    <div
+                                        key={gpu.index}
+                                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                                    >
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+                                                    <Zap className="h-4 w-4"/>
+                                                </span>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-900">GPU {gpu.index}</p>
+                                                    <p className="text-xs text-slate-500">{gpu.name}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-2xl font-bold text-purple-600">
+                                                {gpu.utilization.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2 text-xs">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-500">温度</span>
+                                                <span className="font-medium text-slate-900">{gpu.temperature.toFixed(1)}°C</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-500">显存</span>
+                                                <span className="font-medium text-slate-900">
+                                                    {formatBytes(gpu.memoryUsed)} / {formatBytes(gpu.memoryTotal)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-500">功耗</span>
+                                                <span className="font-medium text-slate-900">{gpu.powerDraw.toFixed(1)}W</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-500">风扇转速</span>
+                                                <span className="font-medium text-slate-900">{gpu.fanSpeed.toFixed(0)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* 温度监控 */}
+                    {latestMetrics?.temperature && latestMetrics.temperature.length > 0 && (
+                        <Card title="温度监控" description="系统各部件温度传感器数据">
+                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                                {latestMetrics.temperature.map((temp) => (
+                                    <div
+                                        key={temp.sensorKey}
+                                        className="rounded-xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-4"
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Thermometer className="h-4 w-4 text-orange-500"/>
+                                            <p className="text-xs font-medium text-slate-600 truncate">{temp.sensorLabel}</p>
+                                        </div>
+                                        <p className="text-2xl font-bold text-slate-900">{temp.temperature.toFixed(1)}°C</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Docker 容器监控 */}
+                    {latestMetrics?.docker && latestMetrics.docker.length > 0 && (
+                        <Card title="Docker 容器" description="容器运行状态和资源使用情况">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                    <tr className="border-b border-slate-200 text-left text-xs font-medium text-slate-500">
+                                        <th className="pb-3 pr-4">容器名称</th>
+                                        <th className="pb-3 pr-4">镜像</th>
+                                        <th className="pb-3 pr-4">状态</th>
+                                        <th className="pb-3 pr-4 text-right">CPU</th>
+                                        <th className="pb-3 pr-4 text-right">内存</th>
+                                        <th className="pb-3 pr-4 text-right">网络 I/O</th>
+                                        <th className="pb-3 text-right">磁盘 I/O</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {latestMetrics.docker.map((container) => (
+                                        <tr key={container.containerId}
+                                            className="border-b border-slate-100 last:border-0">
+                                            <td className="py-3 pr-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Box className="h-4 w-4 text-blue-500"/>
+                                                    <span className="font-medium text-slate-900">{container.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 pr-4 text-slate-600 truncate max-w-xs">{container.image}</td>
+                                            <td className="py-3 pr-4">
+                                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                    container.state === 'running'
+                                                        ? 'bg-emerald-50 text-emerald-600'
+                                                        : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${
+                                                        container.state === 'running' ? 'bg-emerald-500' : 'bg-slate-400'
+                                                    }`}/>
+                                                    {container.state}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 pr-4 text-right font-medium text-slate-900">
+                                                {container.cpuPercent > 0 ? `${container.cpuPercent.toFixed(1)}%` : '-'}
+                                            </td>
+                                            <td className="py-3 pr-4 text-right">
+                                                {container.memoryLimit > 0 ? (
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">{container.memoryPercent.toFixed(1)}%</div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {formatBytes(container.memoryUsage)} / {formatBytes(container.memoryLimit)}
+                                                        </div>
+                                                    </div>
+                                                ) : '-'}
+                                            </td>
+                                            <td className="py-3 pr-4 text-right text-xs text-slate-600">
+                                                {container.netInput > 0 || container.netOutput > 0 ? (
+                                                    <div>
+                                                        <div>↓ {formatBytes(container.netInput)}</div>
+                                                        <div>↑ {formatBytes(container.netOutput)}</div>
+                                                    </div>
+                                                ) : '-'}
+                                            </td>
+                                            <td className="py-3 text-right text-xs text-slate-600">
+                                                {container.blockInput > 0 || container.blockOutput > 0 ? (
+                                                    <div>
+                                                        <div>R {formatBytes(container.blockInput)}</div>
+                                                        <div>W {formatBytes(container.blockOutput)}</div>
+                                                    </div>
+                                                ) : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
                 </main>
 
                 <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-400">

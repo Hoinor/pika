@@ -12,25 +12,32 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	// PropertyIDNotificationChannels 通知渠道配置的固定 ID
+	PropertyIDNotificationChannels = "notification_channels"
+)
+
 // AlertService 告警服务
 type AlertService struct {
-	alertRepo *repo.AlertRepo
-	agentRepo *repo.AgentRepo
-	notifier  *Notifier
-	logger    *zap.Logger
+	alertRepo       *repo.AlertRepo
+	agentRepo       *repo.AgentRepo
+	propertyService *PropertyService
+	notifier        *Notifier
+	logger          *zap.Logger
 
 	// 告警状态缓存（内存中维护）
 	states map[string]*models.AlertState
 	mu     sync.RWMutex
 }
 
-func NewAlertService(alertRepo *repo.AlertRepo, agentRepo *repo.AgentRepo, notifier *Notifier, logger *zap.Logger) *AlertService {
+func NewAlertService(alertRepo *repo.AlertRepo, agentRepo *repo.AgentRepo, propertyService *PropertyService, notifier *Notifier, logger *zap.Logger) *AlertService {
 	return &AlertService{
-		alertRepo: alertRepo,
-		agentRepo: agentRepo,
-		notifier:  notifier,
-		logger:    logger,
-		states:    make(map[string]*models.AlertState),
+		alertRepo:       alertRepo,
+		agentRepo:       agentRepo,
+		propertyService: propertyService,
+		notifier:        notifier,
+		logger:          logger,
+		states:          make(map[string]*models.AlertState),
 	}
 }
 
@@ -229,7 +236,31 @@ func (s *AlertService) fireAlert(ctx context.Context, config *models.AlertConfig
 
 	// 发送通知
 	go func() {
-		if err := s.notifier.SendNotification(context.Background(), config, record, agent); err != nil {
+		if len(config.NotificationChannelIDs) == 0 {
+			s.logger.Warn("告警配置未设置通知渠道", zap.String("configId", config.ID))
+			return
+		}
+
+		// 获取所有通知渠道配置
+		var allChannels []models.NotificationChannelConfig
+		err := s.propertyService.GetValue(context.Background(), PropertyIDNotificationChannels, &allChannels)
+		if err != nil {
+			s.logger.Error("获取通知渠道配置失败", zap.Error(err))
+			return
+		}
+
+		// 过滤出配置中指定的渠道类型
+		var selectedChannels []models.NotificationChannelConfig
+		for _, channelType := range config.NotificationChannelIDs {
+			for _, channel := range allChannels {
+				if channel.Type == channelType {
+					selectedChannels = append(selectedChannels, channel)
+					break
+				}
+			}
+		}
+
+		if err := s.notifier.SendNotificationByConfigs(context.Background(), selectedChannels, record, agent); err != nil {
 			s.logger.Error("发送告警通知失败", zap.Error(err))
 		}
 	}()
@@ -261,7 +292,31 @@ func (s *AlertService) resolveAlert(ctx context.Context, config *models.AlertCon
 			} else {
 				// 发送恢复通知
 				go func() {
-					if err := s.notifier.SendNotification(context.Background(), config, existingRecord, agent); err != nil {
+					if len(config.NotificationChannelIDs) == 0 {
+						s.logger.Warn("告警配置未设置通知渠道", zap.String("configId", config.ID))
+						return
+					}
+
+					// 获取所有通知渠道配置
+					var allChannels []models.NotificationChannelConfig
+					err := s.propertyService.GetValue(context.Background(), PropertyIDNotificationChannels, &allChannels)
+					if err != nil {
+						s.logger.Error("获取通知渠道配置失败", zap.Error(err))
+						return
+					}
+
+					// 过滤出配置中指定的渠道类型
+					var selectedChannels []models.NotificationChannelConfig
+					for _, channelType := range config.NotificationChannelIDs {
+						for _, channel := range allChannels {
+							if channel.Type == channelType {
+								selectedChannels = append(selectedChannels, channel)
+								break
+							}
+						}
+					}
+
+					if err := s.notifier.SendNotificationByConfigs(context.Background(), selectedChannels, existingRecord, agent); err != nil {
 						s.logger.Error("发送恢复通知失败", zap.Error(err))
 					}
 				}()
@@ -318,9 +373,26 @@ func (s *AlertService) TestNotification(ctx context.Context, configID string) er
 		return fmt.Errorf("获取告警配置失败: %w", err)
 	}
 
-	agent, err := s.agentRepo.FindById(ctx, config.AgentID)
-	if err != nil {
-		return fmt.Errorf("获取探针信息失败: %w", err)
+	var agent models.Agent
+
+	// 如果是全局配置，使用模拟的探针信息
+	if config.AgentID == "global" {
+		agent = models.Agent{
+			ID:       "test-agent",
+			Name:     "测试探针",
+			Hostname: "test-hostname",
+			IP:       "192.168.1.100",
+			OS:       "Linux",
+			Platform: "测试平台",
+			Location: "测试位置",
+		}
+	} else {
+		// 查询真实探针信息
+		realAgent, err := s.agentRepo.FindById(ctx, config.AgentID)
+		if err != nil {
+			return fmt.Errorf("获取探针信息失败: %w", err)
+		}
+		agent = realAgent
 	}
 
 	// 构造测试告警记录
@@ -337,5 +409,31 @@ func (s *AlertService) TestNotification(ctx context.Context, configID string) er
 		FiredAt:     time.Now().UnixMilli(),
 	}
 
-	return s.notifier.SendNotification(ctx, config, testRecord, &agent)
+	if len(config.NotificationChannelIDs) == 0 {
+		return fmt.Errorf("告警配置未设置通知渠道")
+	}
+
+	// 获取所有通知渠道配置
+	var allChannels []models.NotificationChannelConfig
+	err = s.propertyService.GetValue(ctx, PropertyIDNotificationChannels, &allChannels)
+	if err != nil {
+		return fmt.Errorf("获取通知渠道配置失败: %w", err)
+	}
+
+	// 过滤出配置中指定的渠道类型
+	var selectedChannels []models.NotificationChannelConfig
+	for _, channelType := range config.NotificationChannelIDs {
+		for _, channel := range allChannels {
+			if channel.Type == channelType {
+				selectedChannels = append(selectedChannels, channel)
+				break
+			}
+		}
+	}
+
+	if len(selectedChannels) == 0 {
+		return fmt.Errorf("未找到配置的通知渠道")
+	}
+
+	return s.notifier.SendNotificationByConfigs(ctx, selectedChannels, testRecord, &agent)
 }

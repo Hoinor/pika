@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -328,13 +329,26 @@ func checkSuspiciousProcesses() protocol.SecurityCheck {
 				strings.Contains(name, ":") // PostgreSQL等进程有冒号后缀
 
 			if !nameMatch && !strings.Contains(exe, name) {
-				// 扩展白名单
+				// 扩展白名单(减少脚本语言、容器、数据库等合法进程的误报)
 				whitelistPatterns := []string{
-					"python", "java", "node", "ruby", "perl", "php",
+					// 脚本语言
+					"python", "java", "node", "ruby", "perl", "php", "go", "rust",
+					// Shell
 					"bash", "sh", "zsh", "ksh", "fish",
-					"systemd", "containerd", "docker", "podman",
-					"postgres", "mysqld", "redis", // 数据库worker进程
-					"nginx", "httpd", "apache2", // Web服务器worker
+					// 容器相关
+					"systemd", "containerd", "docker", "podman", "kubernetes", "k3s",
+					// 数据库worker进程
+					"postgres", "mysqld", "redis", "mongodb", "mariadb",
+					// Web服务器worker
+					"nginx", "httpd", "apache2", "caddy",
+					// 包管理器
+					"npm", "yarn", "pip", "cargo", "composer",
+					// 终端复用器
+					"tmux", "screen",
+					// 编辑器
+					"vim", "emacs", "nano",
+					// 其他常见工具
+					"git", "ssh", "rsync", "curl", "wget",
 				}
 
 				isWhitelisted := false
@@ -483,7 +497,7 @@ func checkSSHSecurity() protocol.SecurityCheck {
 		// 检查最近修改
 		modTime := info.ModTime()
 		age := time.Since(modTime)
-		if age < 30*24*time.Hour { // 最近30天
+		if age < 90*24*time.Hour { // 最近90天(OpenSSH更新频繁,延长窗口减少误报)
 			fileHash := calculateSHA256(binPath)
 			check.Status = StatusWarn
 			check.Details = append(check.Details, protocol.SecurityCheckSub{
@@ -550,22 +564,6 @@ func checkListeningPorts() protocol.SecurityCheck {
 		4444:  "Metasploit默认端口",
 		1337:  "黑客常用端口",
 		31337: "黑客常用端口",
-	}
-
-	// 常见服务的合法端口范围
-	legitimatePortRanges := map[string][]uint32{
-		"nginx":      {80, 443, 8080, 8443},
-		"apache":     {80, 443, 8080, 8443},
-		"httpd":      {80, 443, 8080, 8443},
-		"mysql":      {3306, 33060},
-		"mariadb":    {3306, 33060},
-		"postgres":   {5432, 5433},
-		"redis":      {6379, 6380},
-		"mongodb":    {27017, 27018, 27019},
-		"ssh":        {22, 2222},
-		"sshd":       {22, 2222},
-		"docker":     {2375, 2376, 2377},
-		"containerd": {2375, 2376},
 	}
 
 	suspiciousCount := 0
@@ -646,54 +644,6 @@ func checkListeningPorts() protocol.SecurityCheck {
 					Evidence: evidence,
 				})
 				continue
-			}
-
-			// 检查4: 进程与端口的合理性(新增)
-			// 例如: MySQL进程监听80端口是异常的
-			nameLower := strings.ToLower(name)
-			isReasonable := true
-
-			// 检查是否是已知服务
-			if validPorts, exists := legitimatePortRanges[nameLower]; exists {
-				isReasonable = false
-				for _, validPort := range validPorts {
-					if port == validPort {
-						isReasonable = true
-						break
-					}
-				}
-
-				// 如果不合理,报告
-				if !isReasonable {
-					suspiciousCount++
-					check.Status = StatusWarn
-
-					check.Details = append(check.Details, protocol.SecurityCheckSub{
-						Name:    fmt.Sprintf("port_mismatch_%d", port),
-						Status:  StatusWarn,
-						Message: fmt.Sprintf("进程端口不匹配: %s 监听异常端口 %s:%d (预期端口: %v)", name, listenAddr, port, validPorts),
-					})
-					continue
-				}
-			}
-
-			// 检查5: 0.0.0.0监听高危端口(新增)
-			// 某些服务应该只监听localhost
-			if listenAddr == "0.0.0.0" || listenAddr == "::" {
-				dangerousPublicPorts := []uint32{3306, 5432, 6379, 27017, 9200, 5601, 11211}
-				for _, dangerousPort := range dangerousPublicPorts {
-					if port == dangerousPort {
-						suspiciousCount++
-						check.Status = StatusWarn
-
-						check.Details = append(check.Details, protocol.SecurityCheckSub{
-							Name:    fmt.Sprintf("public_db_port_%d", port),
-							Status:  StatusWarn,
-							Message: fmt.Sprintf("数据库服务公网监听: %s 在 0.0.0.0:%d 监听 (建议仅监听127.0.0.1)", name, port),
-						})
-						break
-					}
-				}
 			}
 		}
 	}
@@ -875,20 +825,6 @@ func checkSuspiciousFiles() protocol.SecurityCheck {
 		}
 	}
 
-	// 3. 检查可疑的SUID/SGID文件
-	suspiciousSUIDs := findSuspiciousSUIDFiles()
-	if len(suspiciousSUIDs) > 0 {
-		check.Status = StatusFail
-		for _, file := range suspiciousSUIDs {
-			suspiciousCount++
-			check.Details = append(check.Details, protocol.SecurityCheckSub{
-				Name:    "suspicious_suid",
-				Status:  StatusFail,
-				Message: file,
-			})
-		}
-	}
-
 	if suspiciousCount == 0 {
 		check.Details = append(check.Details, protocol.SecurityCheckSub{
 			Name:    "files_clean",
@@ -926,16 +862,17 @@ func findSuspiciousExecutables(dir string) []string {
 
 		// 检查是否可执行
 		if info.Mode()&0111 != 0 {
-			// 最近24小时创建的可执行文件更可疑
+			// 最近2小时创建的可执行文件更可疑(捕获活跃威胁)
 			age := now.Sub(info.ModTime())
 			sizeKB := info.Size() / 1024
+			sizeMB := info.Size() / 1024 / 1024
 
-			if age < 24*time.Hour {
+			if age < 2*time.Hour {
 				suspicious = append(suspicious, fmt.Sprintf("%s 下的最近可执行文件: %s (大小: %dKB, 创建时间: %s)",
 					dir, fullPath, sizeKB, info.ModTime().Format("2006-01-02 15:04:05")))
-			} else if sizeKB > 1024 { // 大于1MB的可执行文件
-				suspicious = append(suspicious, fmt.Sprintf("%s 下的大型可执行文件: %s (大小: %dKB)",
-					dir, fullPath, sizeKB))
+			} else if sizeMB > 10 { // 大于10MB的可执行文件
+				suspicious = append(suspicious, fmt.Sprintf("%s 下的大型可执行文件: %s (大小: %dMB)",
+					dir, fullPath, sizeMB))
 			} else {
 				// 其他可执行文件只在特定条件下报告
 				if strings.HasPrefix(entry.Name(), ".") {
@@ -943,75 +880,6 @@ func findSuspiciousExecutables(dir string) []string {
 				}
 			}
 		}
-	}
-
-	return suspicious
-}
-
-// findSuspiciousSUIDFiles 查找可疑的SUID/SGID文件
-func findSuspiciousSUIDFiles() []string {
-	suspicious := []string{}
-
-	// 已知的合法SUID文件列表(常见系统工具)
-	legitimateSUIDs := map[string]bool{
-		"/usr/bin/sudo":                true,
-		"/usr/bin/su":                  true,
-		"/usr/bin/passwd":              true,
-		"/usr/bin/chsh":                true,
-		"/usr/bin/chfn":                true,
-		"/usr/bin/gpasswd":             true,
-		"/usr/bin/newgrp":              true,
-		"/bin/su":                      true,
-		"/bin/mount":                   true,
-		"/bin/umount":                  true,
-		"/bin/ping":                    true,
-		"/usr/bin/pkexec":              true,
-		"/usr/lib/openssh/ssh-keysign": true,
-		"/usr/lib/dbus-1.0/dbus-daemon-launch-helper": true,
-		"/usr/sbin/unix_chkpwd":                       true,
-		"/sbin/unix_chkpwd":                           true,
-	}
-
-	// 使用find命令查找SUID/SGID文件(更高效)
-	output, err := execCommand("find", "/usr", "/bin", "/sbin", "-type", "f", "(",
-		"-perm", "-4000", "-o", "-perm", "-2000", ")", "-ls")
-	if err != nil {
-		return suspicious
-	}
-
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		// 解析find -ls输出,提取文件路径
-		fields := strings.Fields(line)
-		if len(fields) < 11 {
-			continue
-		}
-
-		filePath := fields[len(fields)-1]
-
-		// 跳过合法的SUID文件
-		if legitimateSUIDs[filePath] {
-			continue
-		}
-
-		// 检查文件是否在可疑路径
-		if strings.HasPrefix(filePath, "/tmp/") || strings.HasPrefix(filePath, "/dev/shm/") ||
-			strings.HasPrefix(filePath, "/var/tmp/") {
-			suspicious = append(suspicious, fmt.Sprintf("可疑位置的SUID文件: %s (高危)", filePath))
-			continue
-		}
-
-		// 报告所有非标准的SUID文件
-		suspicious = append(suspicious, fmt.Sprintf("非标准SUID文件: %s", filePath))
-	}
-
-	// 限制报告数量
-	if len(suspicious) > 15 {
-		suspicious = suspicious[:15]
 	}
 
 	return suspicious
@@ -1145,20 +1013,7 @@ func checkNetworkConnections() protocol.SecurityCheck {
 			})
 		}
 
-		// 检查2: 系统进程的异常外连
-		if processName != "" && isSystemProcess(processName) && !isLocalIP(conn.Raddr.IP) {
-			// 系统进程不应该连接外部IP
-			suspiciousCount++
-			check.Status = StatusWarn
-
-			check.Details = append(check.Details, protocol.SecurityCheckSub{
-				Name:    "system_process_external_conn",
-				Status:  StatusWarn,
-				Message: fmt.Sprintf("系统进程异常外连: %s (PID:%d) -> %s:%d", processName, conn.Pid, conn.Raddr.IP, conn.Raddr.Port),
-			})
-		}
-
-		// 检查3: 可疑路径的进程外连
+		// 检查2: 可疑路径的进程外连
 		if processPath != "" && isSuspiciousPath(processPath) {
 			suspiciousCount++
 			check.Status = StatusFail
@@ -1194,36 +1049,20 @@ func checkNetworkConnections() protocol.SecurityCheck {
 	return check
 }
 
-// isSystemProcess 判断是否是系统进程
-func isSystemProcess(name string) bool {
-	systemProcs := []string{
-		"systemd", "init", "sshd", "cron", "rsyslogd",
-		"dbus-daemon", "systemd-udevd", "systemd-logind",
-	}
-
-	nameLower := strings.ToLower(name)
-	for _, sp := range systemProcs {
-		if nameLower == sp {
-			return true
-		}
-	}
-	return false
-}
-
 // isLocalIP 判断是否是本地IP
 func isLocalIP(ip string) bool {
 	if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" {
 		return true
 	}
-	// 检查私有IP段
-	if strings.HasPrefix(ip, "192.168.") || strings.HasPrefix(ip, "10.") ||
-		strings.HasPrefix(ip, "172.16.") || strings.HasPrefix(ip, "172.17.") ||
-		strings.HasPrefix(ip, "172.18.") || strings.HasPrefix(ip, "172.19.") ||
-		strings.HasPrefix(ip, "172.2") || strings.HasPrefix(ip, "172.30.") ||
-		strings.HasPrefix(ip, "172.31.") {
-		return true
+
+	// 使用标准库判断私有IP (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
 	}
-	return false
+
+	// 检查是否是私有IP、环回地址或链路本地地址
+	return parsedIP.IsLoopback() || parsedIP.IsPrivate() || parsedIP.IsLinkLocalUnicast()
 }
 
 // checkFileIntegrity 检查关键系统文件完整性(增强版)
@@ -1304,10 +1143,11 @@ func checkFileIntegrity() protocol.SecurityCheck {
 			continue // 文件不存在,跳过
 		}
 
-		// 检查最近7天内被修改的关键二进制文件(可能被替换)
+		// 检查最近90天内被修改的关键二进制文件(可能被替换)
+		// 注意: 系统更新(apt/yum)会修改这些文件,90天的窗口减少误报
 		modTime := info.ModTime()
 		age := now.Sub(modTime)
-		if age < 7*24*time.Hour {
+		if age < 90*24*time.Hour {
 			suspiciousCount++
 			check.Status = StatusWarn
 
@@ -1342,7 +1182,7 @@ func checkFileIntegrity() protocol.SecurityCheck {
 
 		modTime := info.ModTime()
 		age := now.Sub(modTime)
-		if age < 7*24*time.Hour {
+		if age < 30*24*time.Hour {
 			suspiciousCount++
 			check.Status = StatusWarn
 
@@ -1444,19 +1284,19 @@ func checkImmutableFiles() protocol.SecurityCheck {
 		// 检查是否有i标志(immutable)
 		if strings.Contains(output, "----i") || strings.Contains(output, "---i-") {
 			suspiciousCount++
-			check.Status = StatusWarn
+			check.Status = StatusFail // 关键文件不可变是严重问题
 
 			// 计算文件哈希
 			fileHash := calculateSHA256(file)
 
 			check.Details = append(check.Details, protocol.SecurityCheckSub{
 				Name:    "immutable_critical_file",
-				Status:  StatusWarn,
-				Message: fmt.Sprintf("关键文件被设置为不可变: %s", file),
+				Status:  StatusFail, // 关键文件不可变是高危信号,升级为Fail
+				Message: fmt.Sprintf("关键文件被设置为不可变: %s (可能是rootkit)", file),
 				Evidence: &protocol.Evidence{
 					FilePath:  file,
 					FileHash:  fileHash,
-					RiskLevel: "high", // 关键文件不可变是高危信号
+					RiskLevel: "high",
 				},
 			})
 		}
@@ -1665,8 +1505,9 @@ func analyzeSuccessfulLogins(output string) []string {
 	}
 
 	// 检测1: 短时间内来自同一IP的多次成功登录(可能是暴力破解成功后的批量操作)
+	// 提高阈值减少CI/CD、跳板机等自动化运维的误报
 	for ip, count := range ipCount {
-		if count >= 5 {
+		if count >= 10 {
 			suspicious = append(suspicious, fmt.Sprintf("检测到IP %s 在最近50条记录中成功登录%d次(可能异常)", ip, count))
 		}
 	}
@@ -1943,8 +1784,8 @@ func checkAuthorizedKeysContent() []string {
 			continue
 		}
 
-		// 1. 检查最近7天内被修改(从24小时改为7天,减少误报)
-		if time.Since(info.ModTime()) < 7*24*time.Hour {
+		// 1. 检查最近30天内被修改(减少正常密钥管理操作的误报)
+		if time.Since(info.ModTime()) < 30*24*time.Hour {
 			suspicious = append(suspicious, fmt.Sprintf("用户 '%s' 的 authorized_keys 最近被修改: %s (%d天前)",
 				user.Username, info.ModTime().Format("2006-01-02 15:04:05"), int(time.Since(info.ModTime()).Hours()/24)))
 		}
@@ -2089,7 +1930,7 @@ func checkSuspiciousSSHD() []string {
 
 // checkCronPath 检查cron目录
 func checkCronPath(cronPath string) []string {
-	suspicious := []string{}
+	var suspicious []string
 
 	info, err := os.Stat(cronPath)
 	if err != nil {
@@ -2362,14 +2203,18 @@ func findRootUIDAccounts() []string {
 
 // isMiningPool 检查是否连接到挖矿池
 func isMiningPool(ip string, port uint32) bool {
-	// 常见挖矿池端口
-	minerPorts := []uint32{3333, 4444, 5555, 7777, 8888, 14444, 45560}
+	// 常见挖矿池端口(移除3333/5555/8888等误报端口)
+	// 3333: MySQL Cluster, 5555: ADB, 8888: Jupyter
+	// 只保留专用的挖矿池端口
+	minerPorts := []uint32{14444, 45560}
+
 	for _, p := range minerPorts {
 		if port == p {
 			return true
 		}
 	}
 
+	// TODO: 未来可结合域名检测(如pool.supportxmr.com)提升准确度
 	return false
 }
 
@@ -2526,8 +2371,11 @@ func collectProcessEvidence(p *process.Process, riskLevel string) *protocol.Evid
 
 // isLegitimateLibraryPath 检查是否是合法的库路径
 func isLegitimateLibraryPath(path, processName, processExe string) bool {
-	// 开发工具
-	devTools := []string{"jetbrains", "vscode", "idea", "pycharm", "goland"}
+	// 开发工具(IDE)
+	devTools := []string{
+		"jetbrains", "vscode", "idea", "pycharm", "goland", "webstorm",
+		"clion", "rider", "datagrip", "androidstudio",
+	}
 	for _, tool := range devTools {
 		if strings.Contains(strings.ToLower(processExe), tool) {
 			return true
@@ -2535,7 +2383,7 @@ func isLegitimateLibraryPath(path, processName, processExe string) bool {
 	}
 
 	// 数据库
-	databases := []string{"postgres", "mysql", "mariadb", "mongodb", "redis"}
+	databases := []string{"postgres", "mysql", "mariadb", "mongodb", "redis", "elasticsearch", "clickhouse"}
 	for _, db := range databases {
 		if strings.Contains(strings.ToLower(processName), db) {
 			return true
@@ -2543,7 +2391,7 @@ func isLegitimateLibraryPath(path, processName, processExe string) bool {
 	}
 
 	// 容器相关
-	containers := []string{"docker", "containerd", "kubelet", "podman", "cri-o"}
+	containers := []string{"docker", "containerd", "kubelet", "podman", "cri-o", "k3s", "kubernetes"}
 	for _, container := range containers {
 		if strings.Contains(strings.ToLower(processName), container) {
 			return true
@@ -2551,9 +2399,22 @@ func isLegitimateLibraryPath(path, processName, processExe string) bool {
 	}
 
 	// Web服务器
-	webServers := []string{"nginx", "apache", "httpd", "caddy"}
+	webServers := []string{"nginx", "apache", "httpd", "caddy", "traefik"}
 	for _, ws := range webServers {
 		if strings.Contains(strings.ToLower(processName), ws) {
+			return true
+		}
+	}
+
+	// 科学计算和虚拟化(新增)
+	scientificAndVirt := []string{
+		"matlab", "mathematica", "octave", "julia", // 科学计算
+		"virtualbox", "qemu", "vmware", "kvm", "libvirt", // 虚拟化
+		"datadog", "newrelic", "prometheus", "grafana", // 监控工具
+	}
+	for _, tool := range scientificAndVirt {
+		if strings.Contains(strings.ToLower(processName), tool) ||
+			strings.Contains(strings.ToLower(processExe), tool) {
 			return true
 		}
 	}

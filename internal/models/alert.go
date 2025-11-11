@@ -14,8 +14,9 @@ type AlertConfig struct {
 	// 告警规则
 	Rules AlertRules `gorm:"embedded;embeddedPrefix:rule_" json:"rules"`
 
-	// 告警通知配置
-	Notification NotificationConfig `gorm:"embedded;embeddedPrefix:notify_" json:"notification"`
+	// 通知渠道ID列表
+	NotificationChannelIDs    []string `gorm:"-" json:"notificationChannelIds"`          // 通知渠道ID列表（前端使用）
+	NotificationChannelIDsStr string   `json:"-" gorm:"column:notification_channel_ids"` // 数据库存储（JSON序列化）
 }
 
 // AlertRules 告警规则
@@ -38,31 +39,6 @@ type AlertRules struct {
 	// 网络断开告警配置
 	NetworkEnabled  bool `json:"networkEnabled"`  // 是否启用网络断开告警
 	NetworkDuration int  `json:"networkDuration"` // 持续时间（秒）
-}
-
-// NotificationConfig 告警通知配置
-type NotificationConfig struct {
-	// 钉钉配置
-	DingTalkEnabled bool   `json:"dingTalkEnabled"` // 是否启用钉钉通知
-	DingTalkWebhook string `json:"dingTalkWebhook"` // 钉钉Webhook URL
-	DingTalkSecret  string `json:"dingTalkSecret"`  // 钉钉加签密钥（可选）
-
-	// 企业微信配置
-	WeComEnabled bool   `json:"weComEnabled"` // 是否启用企业微信通知
-	WeComWebhook string `json:"weComWebhook"` // 企业微信Webhook URL
-
-	// 飞书配置
-	FeishuEnabled bool   `json:"feishuEnabled"` // 是否启用飞书通知
-	FeishuWebhook string `json:"feishuWebhook"` // 飞书Webhook URL
-
-	// 邮件配置
-	EmailEnabled      bool     `json:"emailEnabled"`                    // 是否启用邮件通知
-	EmailAddresses    []string `gorm:"-" json:"emailAddresses"`         // 接收邮件地址列表
-	EmailAddressesStr string   `json:"-" gorm:"column:email_addresses"` // 数据库存储（JSON序列化）
-
-	// 自定义Webhook配置
-	CustomWebhookEnabled bool   `json:"customWebhookEnabled"` // 是否启用自定义Webhook
-	CustomWebhookURL     string `json:"customWebhookUrl"`     // 自定义Webhook URL
 }
 
 func (AlertConfig) TableName() string {

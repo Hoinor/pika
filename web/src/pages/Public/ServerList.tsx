@@ -306,19 +306,9 @@ const ServerList = () => {
     );
 
     const renderListView = () => (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-indigo-50">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                    <th className="px-5 py-3">服务器</th>
-                    <th className="px-5 py-3">操作系统</th>
-                    <th className="px-5 py-3">CPU</th>
-                    <th className="px-5 py-3">内存</th>
-                    <th className="px-5 py-3">磁盘</th>
-                    <th className="px-5 py-3">网络</th>
-                </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 text-slate-700">
+        <>
+            {/* 移动端：使用卡片式布局 */}
+            <div className="flex flex-col gap-4 lg:hidden">
                 {filteredAgents.map((agent) => {
                     const cpuUsage = agent.metrics?.cpu?.usagePercent ?? 0;
                     const cpuModel = agent.metrics?.cpu?.modelName || '未知';
@@ -338,8 +328,9 @@ const ServerList = () => {
                     const {upload, download} = calculateNetworkSpeed(agent.metrics);
 
                     return (
-                        <tr
+                        <div
                             key={agent.id}
+                            role="button"
                             tabIndex={0}
                             onClick={() => handleNavigate(agent.id)}
                             onKeyDown={(event) => {
@@ -348,103 +339,259 @@ const ServerList = () => {
                                     handleNavigate(agent.id);
                                 }
                             }}
-                            className="cursor-pointer transition hover:bg-indigo-50 focus-within:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
                         >
-                            <td className="px-5 py-4 align-center">
-                                <div className="flex flex-col gap-2">
+                            {/* 服务器信息 */}
+                            <div className="mb-4 flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="text-sm font-semibold text-slate-900">
+                                        <span className="text-base font-semibold text-slate-900">
                                             {agent.name || agent.hostname}
                                         </span>
-                                        <span
-                                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
                                             <span className="h-1.5 w-1.5 rounded-lg bg-emerald-500"/>
                                             在线
                                         </span>
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                        {agent.platform && (
-                                            <span className="inline-flex items-center gap-1">
-                                                <span className="font-medium">平台:</span> {agent.platform}
-                                            </span>
-                                        )}
-                                        {agent.location && (
-                                            <span className="inline-flex items-center gap-1">
-                                                <span className="font-medium">位置:</span> {agent.location}
-                                            </span>
-                                        )}
-                                        {agent.expireTime > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-amber-700">
-                                                <span
-                                                    className="font-medium">到期:</span> {new Date(agent.expireTime).toLocaleDateString('zh-CN')}
-                                            </span>
-                                        )}
-                                    </div>
+                                    <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700">
+                                        {agent.os} · {agent.arch}
+                                    </span>
                                 </div>
-                            </td>
-                            <td className="px-5 py-4 align-center text-xs text-slate-500">
-                                <div>{agent.os}</div>
-                                <div className="text-slate-400">{agent.arch}</div>
-                            </td>
-                            <td className="px-5 py-4 align-center">
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-24">
-                                            <ProgressBar percent={cpuUsage} colorClass={getProgressColor(cpuUsage)}/>
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                    {agent.platform && (
+                                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5">
+                                            <span className="font-medium">平台:</span> {agent.platform}
+                                        </span>
+                                    )}
+                                    {agent.location && (
+                                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5">
+                                            <span className="font-medium">位置:</span> {agent.location}
+                                        </span>
+                                    )}
+                                    {agent.expireTime > 0 && (
+                                        <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-amber-700">
+                                            <span className="font-medium">到期:</span> {new Date(agent.expireTime).toLocaleDateString('zh-CN')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 监控指标 */}
+                            <div className="space-y-3">
+                                {/* CPU */}
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                                            <Cpu className="h-3.5 w-3.5"/>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-900">
+                                        <span className="text-xs font-semibold text-slate-700">CPU</span>
+                                        <span className="ml-auto text-xs font-bold text-slate-900">
                                             {formatPercentValue(cpuUsage)}%
                                         </span>
                                     </div>
-                                    <div className="text-xs text-slate-500">
-                                        <div className="truncate max-w-xs" title={cpuModel}>{cpuModel}</div>
+                                    <ProgressBar percent={cpuUsage} colorClass={getProgressColor(cpuUsage)}/>
+                                    <div className="mt-2 text-xs text-slate-500">
+                                        <div className="truncate" title={cpuModel}>{cpuModel}</div>
                                         <div>{cpuPhysicalCores}核{cpuLogicalCores}线程</div>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-5 py-4 align-center">
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-24">
-                                            <ProgressBar percent={memoryUsage}
-                                                         colorClass={getProgressColor(memoryUsage)}/>
+
+                                {/* 内存 */}
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                                            <MemoryStick className="h-3.5 w-3.5"/>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-900">
+                                        <span className="text-xs font-semibold text-slate-700">内存</span>
+                                        <span className="ml-auto text-xs font-bold text-slate-900">
                                             {formatPercentValue(memoryUsage)}%
                                         </span>
                                     </div>
-                                    <div className="text-xs text-slate-500">
+                                    <ProgressBar percent={memoryUsage} colorClass={getProgressColor(memoryUsage)}/>
+                                    <div className="mt-2 text-xs text-slate-500">
                                         <div>总计：{formatBytes(memoryTotal)}</div>
                                         <div>已用：{formatBytes(memoryUsed)} / 剩余：{formatBytes(memoryFree)}</div>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-5 py-4 align-center">
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-24">
-                                            <ProgressBar percent={diskUsage} colorClass={getProgressColor(diskUsage)}/>
+
+                                {/* 磁盘 */}
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                                            <HardDrive className="h-3.5 w-3.5"/>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-900">
+                                        <span className="text-xs font-semibold text-slate-700">磁盘</span>
+                                        <span className="ml-auto text-xs font-bold text-slate-900">
                                             {formatPercentValue(diskUsage)}%
                                         </span>
                                     </div>
-                                    <div className="text-xs text-slate-500">
+                                    <ProgressBar percent={diskUsage} colorClass={getProgressColor(diskUsage)}/>
+                                    <div className="mt-2 text-xs text-slate-500">
                                         <div>总计：{formatBytes(diskTotal)}</div>
                                         <div>已用：{formatBytes(diskUsed)} / 剩余：{formatBytes(diskFree)}</div>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-5 py-4 align-center text-xs text-slate-600">
-                                <div>↑ {formatSpeed(upload)}</div>
-                                <div>↓ {formatSpeed(download)}</div>
-                            </td>
-                        </tr>
+
+                                {/* 网络 */}
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                                            <Network className="h-3.5 w-3.5"/>
+                                        </div>
+                                        <span className="text-xs font-semibold text-slate-700">网络速率</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-600">
+                                        <span>↑ {formatSpeed(upload)}</span>
+                                        <span>↓ {formatSpeed(download)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     );
                 })}
-                </tbody>
-            </table>
-        </div>
+            </div>
+
+            {/* 桌面端：使用表格布局 */}
+            <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white lg:block">
+                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-indigo-50">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                        <th className="px-5 py-3">服务器</th>
+                        <th className="px-5 py-3">系统</th>
+                        <th className="px-5 py-3">CPU</th>
+                        <th className="px-5 py-3">内存</th>
+                        <th className="px-5 py-3">磁盘</th>
+                        <th className="px-5 py-3">网络</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-700">
+                    {filteredAgents.map((agent) => {
+                        const cpuUsage = agent.metrics?.cpu?.usagePercent ?? 0;
+                        const cpuModel = agent.metrics?.cpu?.modelName || '未知';
+                        const cpuPhysicalCores = agent.metrics?.cpu?.physicalCores ?? 0;
+                        const cpuLogicalCores = agent.metrics?.cpu?.logicalCores ?? 0;
+
+                        const memoryUsage = agent.metrics?.memory?.usagePercent ?? 0;
+                        const memoryTotal = agent.metrics?.memory?.total ?? 0;
+                        const memoryUsed = agent.metrics?.memory?.used ?? 0;
+                        const memoryFree = agent.metrics?.memory?.free ?? 0;
+
+                        const diskUsage = calculateDiskUsage(agent.metrics);
+                        const diskTotal = agent.metrics?.disk?.total ?? 0;
+                        const diskUsed = agent.metrics?.disk?.used ?? 0;
+                        const diskFree = agent.metrics?.disk?.free ?? 0;
+
+                        const {upload, download} = calculateNetworkSpeed(agent.metrics);
+
+                        return (
+                            <tr
+                                key={agent.id}
+                                tabIndex={0}
+                                onClick={() => handleNavigate(agent.id)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        handleNavigate(agent.id);
+                                    }
+                                }}
+                                className="cursor-pointer transition hover:bg-indigo-50 focus-within:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                            >
+                                <td className="px-5 py-4 align-center">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-semibold text-slate-900">
+                                                {agent.name || agent.hostname}
+                                            </span>
+                                            <span
+                                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                                                <span className="h-1.5 w-1.5 rounded-lg bg-emerald-500"/>
+                                                在线
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                            {agent.platform && (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <span className="font-medium">平台:</span> {agent.platform}
+                                                </span>
+                                            )}
+                                            {agent.location && (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <span className="font-medium">位置:</span> {agent.location}
+                                                </span>
+                                            )}
+                                            {agent.expireTime > 0 && (
+                                                <span className="inline-flex items-center gap-1 text-amber-700">
+                                                    <span
+                                                        className="font-medium">到期:</span> {new Date(agent.expireTime).toLocaleDateString('zh-CN')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-4 align-center text-xs text-slate-500">
+                                    <div>{agent.os}</div>
+                                    <div className="text-slate-400">{agent.arch}</div>
+                                </td>
+                                <td className="px-5 py-4 align-center">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-24">
+                                                <ProgressBar percent={cpuUsage} colorClass={getProgressColor(cpuUsage)}/>
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-900">
+                                                {formatPercentValue(cpuUsage)}%
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            <div className="truncate" style={{maxWidth: '200px'}} title={cpuModel}>{cpuModel}</div>
+                                            <div>{cpuPhysicalCores}核{cpuLogicalCores}线程</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-4 align-center">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-24">
+                                                <ProgressBar percent={memoryUsage}
+                                                             colorClass={getProgressColor(memoryUsage)}/>
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-900">
+                                                {formatPercentValue(memoryUsage)}%
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            <div>总计:{formatBytes(memoryTotal)}</div>
+                                            <div>已用:{formatBytes(memoryUsed)} / 剩余:{formatBytes(memoryFree)}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-4 align-center">
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-24">
+                                                <ProgressBar percent={diskUsage} colorClass={getProgressColor(diskUsage)}/>
+                                            </div>
+                                            <span className="text-xs font-semibold text-slate-900">
+                                                {formatPercentValue(diskUsage)}%
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            <div>总计:{formatBytes(diskTotal)}</div>
+                                            <div>已用:{formatBytes(diskUsed)} / 剩余:{formatBytes(diskFree)}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-4 align-center text-xs text-slate-600">
+                                    <div>↑ {formatSpeed(upload)}</div>
+                                    <div>↓ {formatSpeed(download)}</div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    </tbody>
+                </table>
+            </div>
+        </>
     );
 
     if (isLoading) {

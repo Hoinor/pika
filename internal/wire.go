@@ -23,12 +23,14 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 		repo.NewUserRepo,
 		provideApiKeyRepo,
 		provideAlertRepo,
+		providePropertyRepo,
 
 		// Services
 		provideApiKeyService,
 		provideAgentService,
 		service.NewUserService,
 		provideNotifier,
+		providePropertyService,
 		provideAlertService,
 
 		// Providers for services with config
@@ -36,6 +38,7 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 		provideAgentHandler,
 		provideApiKeyHandler,
 		provideAlertHandler,
+		providePropertyHandler,
 
 		// WebSocket Manager
 		websocket.NewManager,
@@ -52,13 +55,15 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 
 // AppComponents 应用组件
 type AppComponents struct {
-	AccountHandler *handler.AccountHandler
-	AgentHandler   *handler.AgentHandler
-	UserHandler    *handler.UserHandler
-	ApiKeyHandler  *handler.ApiKeyHandler
-	AlertHandler   *handler.AlertHandler
-	AgentService   *service.AgentService
-	UserService    *service.UserService
-	AlertService   *service.AlertService
-	WSManager      *websocket.Manager
+	AccountHandler  *handler.AccountHandler
+	AgentHandler    *handler.AgentHandler
+	UserHandler     *handler.UserHandler
+	ApiKeyHandler   *handler.ApiKeyHandler
+	AlertHandler    *handler.AlertHandler
+	PropertyHandler *handler.PropertyHandler
+	AgentService    *service.AgentService
+	UserService     *service.UserService
+	AlertService    *service.AlertService
+	PropertyService *service.PropertyService
+	WSManager       *websocket.Manager
 }

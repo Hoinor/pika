@@ -4,11 +4,16 @@
 # 服务器配置
 server:
   # 服务器地址（不需要指定协议路径，会自动拼接）
-  # 例如: http://localhost:18888 或 https://your-server.com
-  endpoint: http://localhost:18888
+  # 例如: http://localhost:8080 或 https://your-server.com
+  endpoint: http://localhost:8080
 
   # API Key（必填，从服务端获取）
   api_key: "your-api-key-here"
+
+  # 是否跳过 TLS 证书验证（可选，默认: false）
+  # 警告: 仅用于测试环境或自签名证书，生产环境不建议开启
+  # 开启后会跳过服务器 HTTPS 证书的验证
+  insecure_skip_verify: false
 
 # Agent 配置
 agent:
@@ -41,7 +46,7 @@ auto_update:
   # 是否启用自动更新
   # 启用后会定期检查服务端版本，有新版本时自动下载并更新
   # 更新地址会自动从 server.endpoint 获取
-  enabled: false
+  enabled: true
 
   # 检查更新间隔（小时）
   # 建议: 6-24 小时

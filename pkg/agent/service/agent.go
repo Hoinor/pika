@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -117,8 +118,17 @@ func (a *Agent) runOnce(ctx context.Context) error {
 	wsURL := a.cfg.GetWebSocketURL()
 	log.Printf("🔌 正在连接到服务器: %s", wsURL)
 
+	// 创建自定义的 Dialer
+	var dialer = websocket.DefaultDialer
+	if a.cfg.Server.InsecureSkipVerify {
+		dialer.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		log.Println("⚠️  警告: 已禁用 TLS 证书验证")
+	}
+
 	// 连接到服务器
-	rawConn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	rawConn, _, err := dialer.Dial(wsURL, nil)
 	if err != nil {
 		return fmt.Errorf("连接失败: %w", err)
 	}
@@ -403,6 +413,11 @@ func (a *Agent) collectAndSendAllMetrics(conn *safeConn, manager *collector.Mana
 	// 温度信息（可选）
 	if err := manager.CollectAndSendTemperature(conn); err != nil {
 		log.Printf("ℹ️  发送温度信息失败: %v", err)
+	}
+
+	// Docker 容器信息（可选）
+	if err := manager.CollectAndSendDocker(conn); err != nil {
+		log.Printf("ℹ️  发送Docker信息失败: %v", err)
 	}
 
 	if hasError {

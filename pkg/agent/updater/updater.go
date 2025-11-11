@@ -2,6 +2,7 @@ package updater
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,12 +37,22 @@ func New(cfg *config.Config, currentVer string) (*Updater, error) {
 		return nil, fmt.Errorf("获取可执行文件路径失败: %w", err)
 	}
 
+	// 创建 HTTP 客户端，根据配置决定是否跳过证书验证
+	httpClient := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+	if cfg.Server.InsecureSkipVerify {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
 	return &Updater{
-		cfg:        cfg,
-		currentVer: currentVer,
-		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
-		},
+		cfg:            cfg,
+		currentVer:     currentVer,
+		httpClient:     httpClient,
 		executablePath: execPath,
 	}, nil
 }
@@ -104,7 +115,29 @@ func (u *Updater) checkAndUpdate() {
 // fetchLatestVersion 获取最新版本信息
 func (u *Updater) fetchLatestVersion() (*VersionInfo, error) {
 	updateURL := u.cfg.GetUpdateURL()
-	return CheckUpdate(updateURL, u.currentVer)
+	return u.checkUpdateWithClient(updateURL, u.currentVer)
+}
+
+// checkUpdateWithClient 使用实例的 httpClient 检查更新
+func (u *Updater) checkUpdateWithClient(updateURL, currentVer string) (*VersionInfo, error) {
+	url := fmt.Sprintf("%s?os=%s&arch=%s", updateURL, runtime.GOOS, runtime.GOARCH)
+
+	resp, err := u.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP 状态码: %d", resp.StatusCode)
+	}
+
+	var versionInfo VersionInfo
+	if err := json.NewDecoder(resp.Body).Decode(&versionInfo); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	return &versionInfo, nil
 }
 
 // downloadAndUpdate 下载并更新
@@ -112,12 +145,60 @@ func (u *Updater) downloadAndUpdate(versionInfo *VersionInfo) error {
 	log.Printf("📥 下载新版本: %s", versionInfo.Version)
 
 	downloadURL := u.cfg.GetDownloadURL()
-	if err := Update(downloadURL); err != nil {
+	if err := u.updateWithClient(downloadURL); err != nil {
 		return err
 	}
 
 	log.Printf("✅ 新版本已安装到: %s", u.executablePath)
 	return nil
+}
+
+// updateWithClient 使用实例的 httpClient 下载并更新
+func (u *Updater) updateWithClient(downloadURL string) error {
+	execPath := u.executablePath
+
+	// 解析实际路径（处理符号链接）
+	execPath, err := filepath.EvalSymlinks(execPath)
+	if err != nil {
+		return fmt.Errorf("解析可执行文件路径失败: %w", err)
+	}
+
+	// 下载文件
+	resp, err := u.httpClient.Get(downloadURL)
+	if err != nil {
+		return fmt.Errorf("下载失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP 状态码: %d", resp.StatusCode)
+	}
+
+	// 创建临时文件
+	tmpFile := execPath + ".new"
+	out, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	defer out.Close()
+	defer os.Remove(tmpFile)
+
+	// 写入文件
+	written, err := io.Copy(out, resp.Body)
+	if err != nil {
+		return fmt.Errorf("写入文件失败: %w", err)
+	}
+
+	log.Printf("下载完成，文件大小: %d 字节", written)
+
+	// 根据操作系统选择不同的更新策略
+	if runtime.GOOS == "windows" {
+		// Windows: 使用批处理脚本延迟替换
+		return updateOnWindows(execPath, tmpFile)
+	}
+
+	// Unix-like: 直接替换
+	return updateOnUnix(execPath, tmpFile)
 }
 
 // CheckUpdate 手动检查更新（用于命令行）

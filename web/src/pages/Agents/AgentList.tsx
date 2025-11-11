@@ -2,10 +2,10 @@ import {useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Space, Tag, Modal, Form, Input, DatePicker} from 'antd';
-import {Eye, RefreshCw, Edit} from 'lucide-react';
+import {App, Button, DatePicker, Divider, Form, Input, Modal, Space, Tag} from 'antd';
+import {Edit, Eye, RefreshCw} from 'lucide-react';
 import {getAgentPaging, updateAgentInfo} from '../../api/agent';
-import type{Agent} from '../../types';
+import type {Agent} from '../../types';
 import {getErrorMessage} from '../../lib/utils';
 import dayjs from 'dayjs';
 import {PageHeader} from '../../components';
@@ -95,7 +95,7 @@ const AgentList = () => {
             dataIndex: 'expireTime',
             key: 'expireTime',
             hideInSearch: true,
-            width: 150,
+            width: 100,
             render: (val) => {
                 if (!val) return '-';
                 const expireDate = new Date(val as number);
@@ -154,6 +154,12 @@ const AgentList = () => {
             },
         },
         {
+            title: '版本',
+            dataIndex: 'version',
+            key: 'version',
+            width: 100,
+        },
+        {
             title: '最后活跃时间',
             dataIndex: 'lastSeenAt',
             key: 'lastSeenAt',
@@ -206,14 +212,15 @@ const AgentList = () => {
                 ]}
             />
 
+            <Divider/>
+
             {/* 探针列表 */}
-            <div className="rounded-md p-4 border border-gray-200">
             <ProTable<Agent>
                 actionRef={actionRef}
                 rowKey="id"
                 search={{labelWidth: 80}}
                 columns={columns}
-                scroll={{ x: 'max-content' }}
+                scroll={{x: 'max-content'}}
                 pagination={{
                     defaultPageSize: 10,
                     showSizeChanger: true,
@@ -244,7 +251,6 @@ const AgentList = () => {
                     }
                 }}
             />
-            </div>
 
             {/* 编辑探针信息模态框 */}
             <Modal
@@ -259,28 +265,28 @@ const AgentList = () => {
                     <Form.Item
                         label="名称"
                         name="name"
-                        rules={[{ required: true, message: '请输入探针名称' }]}
+                        rules={[{required: true, message: '请输入探针名称'}]}
                     >
-                        <Input placeholder="请输入探针名称" />
+                        <Input placeholder="请输入探针名称"/>
                     </Form.Item>
                     <Form.Item
                         label="平台"
                         name="platform"
                     >
-                        <Input placeholder="请输入平台信息，如：阿里云、腾讯云" />
+                        <Input placeholder="请输入平台信息，如：阿里云、腾讯云"/>
                     </Form.Item>
                     <Form.Item
                         label="位置"
                         name="location"
                     >
-                        <Input placeholder="请输入位置信息，如：北京、香港" />
+                        <Input placeholder="请输入位置信息，如：北京、香港"/>
                     </Form.Item>
                     <Form.Item
                         label="到期时间"
                         name="expireTime"
                     >
                         <DatePicker
-                            style={{ width: '100%' }}
+                            style={{width: '100%'}}
                             format="YYYY-MM-DD"
                             placeholder="请选择到期时间"
                         />

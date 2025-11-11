@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/dushixiang/pika/internal/service"
 	"github.com/go-orz/orz"
 	"github.com/labstack/echo/v4"
@@ -35,7 +37,7 @@ func (r AccountHandler) Login(c echo.Context) error {
 	ctx := c.Request().Context()
 	loginResp, err := r.accountService.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, "用户或密码错误")
 	}
 
 	return orz.Ok(c, loginResp)
