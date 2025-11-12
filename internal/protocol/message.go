@@ -65,6 +65,7 @@ const (
 	MetricTypeGPU         MetricType = "gpu"
 	MetricTypeTemperature MetricType = "temperature"
 	MetricTypeDocker      MetricType = "docker"
+	MetricTypeMonitor     MetricType = "monitor"
 )
 
 // CPUData CPU数据
@@ -112,6 +113,8 @@ type DiskIOData struct {
 	WriteCount     uint64 `json:"writeCount"`
 	ReadBytes      uint64 `json:"readBytes"`
 	WriteBytes     uint64 `json:"writeBytes"`
+	ReadBytesRate  uint64 `json:"readBytesRate"`  // 读取速率(字节/秒)
+	WriteBytesRate uint64 `json:"writeBytesRate"` // 写入速率(字节/秒)
 	ReadTime       uint64 `json:"readTime"`
 	WriteTime      uint64 `json:"writeTime"`
 	IoTime         uint64 `json:"ioTime"`
@@ -259,4 +262,18 @@ type DockerContainerData struct {
 	BlockInput    uint64  `json:"blockInput"`    // 磁盘读取(字节)
 	BlockOutput   uint64  `json:"blockOutput"`   // 磁盘写入(字节)
 	Pids          int     `json:"pids"`          // 进程数
+}
+
+// MonitorData 监控数据
+type MonitorData struct {
+	Name         string `json:"name"`                   // 监控项名称
+	Type         string `json:"type"`                   // 监控类型: http, tcp
+	Target       string `json:"target"`                 // 监控目标
+	Status       string `json:"status"`                 // 状态: up, down
+	StatusCode   int    `json:"statusCode,omitempty"`   // HTTP 状态码
+	ResponseTime int64  `json:"responseTime"`           // 响应时间(毫秒)
+	Error        string `json:"error,omitempty"`        // 错误信息
+	CheckedAt    int64  `json:"checkedAt"`              // 检测时间(毫秒时间戳)
+	Message      string `json:"message,omitempty"`      // 附加信息
+	ContentMatch bool   `json:"contentMatch,omitempty"` // 内容匹配结果
 }

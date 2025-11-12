@@ -159,7 +159,7 @@ func (a *Agent) runOnce(ctx context.Context) error {
 
 	// 创建完成通道
 	done := make(chan struct{})
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 4)
 
 	// 启动读取循环（处理服务端的 Ping/Pong 等控制消息）
 	go func() {
@@ -178,6 +178,13 @@ func (a *Agent) runOnce(ctx context.Context) error {
 	go func() {
 		if err := a.metricsLoop(ctx, conn, collectorManager, done); err != nil {
 			errChan <- fmt.Errorf("数据采集失败: %w", err)
+		}
+	}()
+
+	// 启动监控检测循环
+	go func() {
+		if err := a.monitorLoop(ctx, conn, collectorManager, done); err != nil {
+			errChan <- fmt.Errorf("监控检测失败: %w", err)
 		}
 	}()
 
@@ -425,6 +432,45 @@ func (a *Agent) collectAndSendAllMetrics(conn *safeConn, manager *collector.Mana
 	}
 
 	return nil
+}
+
+// monitorLoop 监控检测循环
+func (a *Agent) monitorLoop(ctx context.Context, conn *safeConn, manager *collector.Manager, done chan struct{}) error {
+	// 如果监控未启用，直接返回
+	if !a.cfg.Monitor.Enabled {
+		log.Println("ℹ️  监控功能未启用")
+		return nil
+	}
+
+	if len(a.cfg.Monitor.Items) == 0 {
+		log.Println("ℹ️  没有配置监控项")
+		return nil
+	}
+
+	log.Printf("🔍 监控功能已启用，共 %d 个监控项", len(a.cfg.Monitor.Items))
+
+	// 立即执行一次监控检测
+	if err := manager.CollectAndSendMonitor(conn); err != nil {
+		log.Printf("⚠️  初始监控检测失败: %v", err)
+	}
+
+	// 定时监控检测
+	ticker := time.NewTicker(a.cfg.GetMonitorInterval())
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// 采集并发送监控数据
+			if err := manager.CollectAndSendMonitor(conn); err != nil {
+				log.Printf("⚠️  监控检测失败: %v", err)
+			}
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 // handleCommand 处理服务端下发的指令

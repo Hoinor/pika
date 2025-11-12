@@ -12,11 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	// PropertyIDNotificationChannels 通知渠道配置的固定 ID
-	PropertyIDNotificationChannels = "notification_channels"
-)
-
 // AlertService 告警服务
 type AlertService struct {
 	alertRepo       *repo.AlertRepo
@@ -94,27 +89,6 @@ func (s *AlertService) CheckMetrics(ctx context.Context, agentID string, cpu, me
 		return err
 	}
 
-	// 过滤出适用于该探针的配置
-	var configs []models.AlertConfig
-	for _, config := range globalConfigs {
-		// 如果 AgentIDs 为空，表示监控所有探针
-		if len(config.AgentIDs) == 0 {
-			configs = append(configs, config)
-			continue
-		}
-		// 如果 AgentIDs 不为空，检查当前探针是否在列表中
-		for _, id := range config.AgentIDs {
-			if id == agentID {
-				configs = append(configs, config)
-				break
-			}
-		}
-	}
-
-	if len(configs) == 0 {
-		return nil
-	}
-
 	// 获取探针信息（用于发送通知）
 	agent, err := s.agentRepo.FindById(ctx, agentID)
 	if err != nil {
@@ -125,7 +99,7 @@ func (s *AlertService) CheckMetrics(ctx context.Context, agentID string, cpu, me
 	now := time.Now().UnixMilli()
 
 	// 检查每个配置的告警规则
-	for _, config := range configs {
+	for _, config := range globalConfigs {
 		// 检查 CPU 告警
 		if config.Rules.CPUEnabled {
 			s.checkAlert(ctx, &config, &agent, "cpu", cpu, config.Rules.CPUThreshold, config.Rules.CPUDuration, now)
@@ -236,31 +210,21 @@ func (s *AlertService) fireAlert(ctx context.Context, config *models.AlertConfig
 
 	// 发送通知
 	go func() {
-		if len(config.NotificationChannelIDs) == 0 {
-			s.logger.Warn("告警配置未设置通知渠道", zap.String("configId", config.ID))
-			return
-		}
-
 		// 获取所有通知渠道配置
-		var allChannels []models.NotificationChannelConfig
-		err := s.propertyService.GetValue(context.Background(), PropertyIDNotificationChannels, &allChannels)
+		channelConfigs, err := s.propertyService.GetNotificationChannelConfigs(context.Background())
 		if err != nil {
 			s.logger.Error("获取通知渠道配置失败", zap.Error(err))
 			return
 		}
 
-		// 过滤出配置中指定的渠道类型
-		var selectedChannels []models.NotificationChannelConfig
-		for _, channelType := range config.NotificationChannelIDs {
-			for _, channel := range allChannels {
-				if channel.Type == channelType {
-					selectedChannels = append(selectedChannels, channel)
-					break
-				}
+		var enabledChannels []models.NotificationChannelConfig
+		for _, channel := range channelConfigs {
+			if !channel.Enabled {
+				continue
 			}
+			enabledChannels = append(enabledChannels, channel)
 		}
-
-		if err := s.notifier.SendNotificationByConfigs(context.Background(), selectedChannels, record, agent); err != nil {
+		if err := s.notifier.SendNotificationByConfigs(context.Background(), enabledChannels, record, agent); err != nil {
 			s.logger.Error("发送告警通知失败", zap.Error(err))
 		}
 	}()
@@ -292,31 +256,22 @@ func (s *AlertService) resolveAlert(ctx context.Context, config *models.AlertCon
 			} else {
 				// 发送恢复通知
 				go func() {
-					if len(config.NotificationChannelIDs) == 0 {
-						s.logger.Warn("告警配置未设置通知渠道", zap.String("configId", config.ID))
-						return
-					}
-
 					// 获取所有通知渠道配置
-					var allChannels []models.NotificationChannelConfig
-					err := s.propertyService.GetValue(context.Background(), PropertyIDNotificationChannels, &allChannels)
+					channelConfigs, err := s.propertyService.GetNotificationChannelConfigs(context.Background())
 					if err != nil {
 						s.logger.Error("获取通知渠道配置失败", zap.Error(err))
 						return
 					}
 
-					// 过滤出配置中指定的渠道类型
-					var selectedChannels []models.NotificationChannelConfig
-					for _, channelType := range config.NotificationChannelIDs {
-						for _, channel := range allChannels {
-							if channel.Type == channelType {
-								selectedChannels = append(selectedChannels, channel)
-								break
-							}
+					var enabledChannels []models.NotificationChannelConfig
+					for _, channel := range channelConfigs {
+						if !channel.Enabled {
+							continue
 						}
+						enabledChannels = append(enabledChannels, channel)
 					}
 
-					if err := s.notifier.SendNotificationByConfigs(context.Background(), selectedChannels, existingRecord, agent); err != nil {
+					if err := s.notifier.SendNotificationByConfigs(context.Background(), enabledChannels, existingRecord, agent); err != nil {
 						s.logger.Error("发送恢复通知失败", zap.Error(err))
 					}
 				}()
@@ -364,76 +319,4 @@ func (s *AlertService) calculateLevel(value, threshold float64) string {
 	} else {
 		return "critical"
 	}
-}
-
-// TestNotification 测试告警通知
-func (s *AlertService) TestNotification(ctx context.Context, configID string) error {
-	config, err := s.alertRepo.GetAlertConfig(ctx, configID)
-	if err != nil {
-		return fmt.Errorf("获取告警配置失败: %w", err)
-	}
-
-	var agent models.Agent
-
-	// 如果是全局配置，使用模拟的探针信息
-	if config.AgentID == "global" {
-		agent = models.Agent{
-			ID:       "test-agent",
-			Name:     "测试探针",
-			Hostname: "test-hostname",
-			IP:       "192.168.1.100",
-			OS:       "Linux",
-			Platform: "测试平台",
-			Location: "测试位置",
-		}
-	} else {
-		// 查询真实探针信息
-		realAgent, err := s.agentRepo.FindById(ctx, config.AgentID)
-		if err != nil {
-			return fmt.Errorf("获取探针信息失败: %w", err)
-		}
-		agent = realAgent
-	}
-
-	// 构造测试告警记录
-	testRecord := &models.AlertRecord{
-		AgentID:     agent.ID,
-		ConfigID:    config.ID,
-		ConfigName:  config.Name,
-		AlertType:   "cpu",
-		Message:     "这是一条测试告警消息",
-		Threshold:   70.0,
-		ActualValue: 75.0,
-		Level:       "warning",
-		Status:      "firing",
-		FiredAt:     time.Now().UnixMilli(),
-	}
-
-	if len(config.NotificationChannelIDs) == 0 {
-		return fmt.Errorf("告警配置未设置通知渠道")
-	}
-
-	// 获取所有通知渠道配置
-	var allChannels []models.NotificationChannelConfig
-	err = s.propertyService.GetValue(ctx, PropertyIDNotificationChannels, &allChannels)
-	if err != nil {
-		return fmt.Errorf("获取通知渠道配置失败: %w", err)
-	}
-
-	// 过滤出配置中指定的渠道类型
-	var selectedChannels []models.NotificationChannelConfig
-	for _, channelType := range config.NotificationChannelIDs {
-		for _, channel := range allChannels {
-			if channel.Type == channelType {
-				selectedChannels = append(selectedChannels, channel)
-				break
-			}
-		}
-	}
-
-	if len(selectedChannels) == 0 {
-		return fmt.Errorf("未找到配置的通知渠道")
-	}
-
-	return s.notifier.SendNotificationByConfigs(ctx, selectedChannels, testRecord, &agent)
 }

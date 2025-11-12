@@ -244,6 +244,8 @@ func (s *AgentService) HandleMetricData(ctx context.Context, agentID string, met
 				WriteCount:     diskIOData.WriteCount,
 				ReadBytes:      diskIOData.ReadBytes,
 				WriteBytes:     diskIOData.WriteBytes,
+				ReadBytesRate:  diskIOData.ReadBytesRate,
+				WriteBytesRate: diskIOData.WriteBytesRate,
 				ReadTime:       diskIOData.ReadTime,
 				WriteTime:      diskIOData.WriteTime,
 				IoTime:         diskIOData.IoTime,
@@ -369,6 +371,36 @@ func (s *AgentService) HandleMetricData(ctx context.Context, agentID string, met
 		}
 		return nil
 
+	case protocol.MetricTypeMonitor:
+		// 监控数据也是数组,需要批量处理
+		var monitorDataList []protocol.MonitorData
+		if err := json.Unmarshal(data, &monitorDataList); err != nil {
+			return err
+		}
+		// 保存每个监控项的数据
+		for _, monitorData := range monitorDataList {
+			metric := &models.MonitorMetric{
+				AgentID:      agentID,
+				Name:         monitorData.Name,
+				Type:         monitorData.Type,
+				Target:       monitorData.Target,
+				Status:       monitorData.Status,
+				StatusCode:   monitorData.StatusCode,
+				ResponseTime: monitorData.ResponseTime,
+				Error:        monitorData.Error,
+				Message:      monitorData.Message,
+				ContentMatch: monitorData.ContentMatch,
+				Timestamp:    monitorData.CheckedAt, // 使用检测时间
+			}
+			if err := s.metricRepo.SaveMonitorMetric(ctx, metric); err != nil {
+				s.logger.Error("failed to save monitor metric",
+					zap.Error(err),
+					zap.String("agentID", agentID),
+					zap.String("name", monitorData.Name))
+			}
+		}
+		return nil
+
 	default:
 		s.logger.Warn("unknown metric type", zap.String("type", metricType))
 		return nil
@@ -411,6 +443,12 @@ func (s *AgentService) GetMetrics(ctx context.Context, agentID, metricType strin
 		return s.metricRepo.GetNetworkMetrics(ctx, agentID, start, end, interval)
 	case "load":
 		return s.metricRepo.GetLoadMetrics(ctx, agentID, start, end, interval)
+	case "disk_io":
+		return s.metricRepo.GetDiskIOMetrics(ctx, agentID, start, end, interval)
+	case "gpu":
+		return s.metricRepo.GetGPUMetrics(ctx, agentID, start, end, interval)
+	case "temperature":
+		return s.metricRepo.GetTemperatureMetrics(ctx, agentID, start, end, interval)
 	default:
 		return nil, nil
 	}
@@ -720,4 +758,19 @@ func (s *AgentService) GetStatistics(ctx context.Context) (map[string]interface{
 		"offline":    offline,
 		"onlineRate": onlineRate,
 	}, nil
+}
+
+// GetLatestMonitorMetrics 获取最新的监控指标
+func (s *AgentService) GetLatestMonitorMetrics(ctx context.Context, agentID string) ([]models.MonitorMetric, error) {
+	return s.metricRepo.GetLatestMonitorMetrics(ctx, agentID)
+}
+
+// GetMonitorMetrics 获取监控指标历史数据
+func (s *AgentService) GetMonitorMetrics(ctx context.Context, agentID, monitorName string, start, end int64) ([]models.MonitorMetric, error) {
+	return s.metricRepo.GetMonitorMetrics(ctx, agentID, monitorName, start, end)
+}
+
+// GetMonitorMetricsByName 获取指定监控项的历史数据
+func (s *AgentService) GetMonitorMetricsByName(ctx context.Context, agentID, monitorName string, start, end int64, limit int) ([]models.MonitorMetric, error) {
+	return s.metricRepo.GetMonitorMetricsByName(ctx, agentID, monitorName, start, end, limit)
 }

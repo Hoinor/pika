@@ -182,7 +182,6 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.GET("/alert-configs/:id", components.AlertHandler.GetAlertConfig)
 		adminApi.PUT("/alert-configs/:id", components.AlertHandler.UpdateAlertConfig)
 		adminApi.DELETE("/alert-configs/:id", components.AlertHandler.DeleteAlertConfig)
-		adminApi.POST("/alert-configs/:id/test", components.AlertHandler.TestNotification)
 
 		// 告警记录查询
 		adminApi.GET("/alert-records", components.AlertHandler.ListAlertRecords)
@@ -219,6 +218,7 @@ func autoMigrate(database *gorm.DB) error {
 		&models.Property{},
 		&models.AlertConfig{},
 		&models.AlertRecord{},
+		&models.MonitorMetric{},
 	)
 }
 

@@ -267,6 +267,7 @@ func (h *AgentHandler) GetMetrics(c echo.Context) error {
 	// 验证指标类型
 	validTypes := map[string]bool{
 		"cpu": true, "memory": true, "disk": true, "network": true, "load": true,
+		"disk_io": true, "gpu": true, "temperature": true,
 	}
 	if metricType == "" {
 		return orz.NewError(400, "指标类型不能为空")
@@ -565,4 +566,69 @@ func (h *AgentHandler) GetStatistics(c echo.Context) error {
 	}
 
 	return orz.Ok(c, stats)
+}
+
+// GetMonitorMetrics 获取监控指标数据
+func (h *AgentHandler) GetMonitorMetrics(c echo.Context) error {
+	agentID := c.Param("id")
+	monitorName := c.QueryParam("name")
+	rangeParam := c.QueryParam("range")
+	ctx := c.Request().Context()
+
+	// 根据 range 参数自动计算时间范围
+	var start, end int64
+	end = time.Now().UnixMilli()
+
+	if rangeParam == "" {
+		rangeParam = "1h" // 默认1小时
+	}
+
+	switch rangeParam {
+	case "1h":
+		start = end - 1*60*60*1000
+	case "6h":
+		start = end - 6*60*60*1000
+	case "12h":
+		start = end - 12*60*60*1000
+	case "24h", "1d":
+		start = end - 24*60*60*1000
+	case "3d":
+		start = end - 3*24*60*60*1000
+	case "7d", "1w":
+		start = end - 7*24*60*60*1000
+	case "30d", "1M":
+		start = end - 30*24*60*60*1000
+	default:
+		return orz.NewError(400, "无效的时间范围，支持: 1h, 6h, 12h, 24h, 3d, 7d, 30d")
+	}
+
+	metrics, err := h.agentService.GetMonitorMetrics(ctx, agentID, monitorName, start, end)
+	if err != nil {
+		return err
+	}
+
+	return orz.Ok(c, orz.Map{
+		"agentId": agentID,
+		"name":    monitorName,
+		"range":   rangeParam,
+		"start":   start,
+		"end":     end,
+		"metrics": metrics,
+	})
+}
+
+// GetLatestMonitorMetrics 获取最新的监控指标
+func (h *AgentHandler) GetLatestMonitorMetrics(c echo.Context) error {
+	agentID := c.Param("id")
+	ctx := c.Request().Context()
+
+	metrics, err := h.agentService.GetLatestMonitorMetrics(ctx, agentID)
+	if err != nil {
+		return err
+	}
+
+	return orz.Ok(c, orz.Map{
+		"agentId": agentID,
+		"metrics": metrics,
+	})
 }

@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/go-orz/orz"
@@ -27,17 +26,6 @@ func (r *AlertRepo) FindByAgentID(ctx context.Context, agentID string) ([]models
 	err := r.db.WithContext(ctx).
 		Where("agent_id = ?", agentID).
 		Find(&configs).Error
-
-	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
-	for i := range configs {
-		if configs[i].AgentIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
-		}
-		if configs[i].NotificationChannelIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
-		}
-	}
-
 	return configs, err
 }
 
@@ -47,16 +35,6 @@ func (r *AlertRepo) FindEnabledByAgentID(ctx context.Context, agentID string) ([
 	err := r.db.WithContext(ctx).
 		Where("agent_id = ? AND enabled = ?", agentID, true).
 		Find(&configs).Error
-
-	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
-	for i := range configs {
-		if configs[i].AgentIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
-		}
-		if configs[i].NotificationChannelIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
-		}
-	}
 
 	return configs, err
 }
@@ -68,46 +46,16 @@ func (r *AlertRepo) FindAllEnabled(ctx context.Context) ([]models.AlertConfig, e
 		Where("enabled = ?", true).
 		Find(&configs).Error
 
-	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
-	for i := range configs {
-		if configs[i].AgentIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].AgentIDsStr), &configs[i].AgentIDs)
-		}
-		if configs[i].NotificationChannelIDsStr != "" {
-			_ = json.Unmarshal([]byte(configs[i].NotificationChannelIDsStr), &configs[i].NotificationChannelIDs)
-		}
-	}
-
 	return configs, err
 }
 
 // CreateAlertConfig 创建告警配置
 func (r *AlertRepo) CreateAlertConfig(ctx context.Context, config *models.AlertConfig) error {
-	// 序列化 AgentIDs 和 NotificationChannelIDs
-	if len(config.AgentIDs) > 0 {
-		data, _ := json.Marshal(config.AgentIDs)
-		config.AgentIDsStr = string(data)
-	}
-	if len(config.NotificationChannelIDs) > 0 {
-		data, _ := json.Marshal(config.NotificationChannelIDs)
-		config.NotificationChannelIDsStr = string(data)
-	}
-
 	return r.db.WithContext(ctx).Create(config).Error
 }
 
 // UpdateAlertConfig 更新告警配置
 func (r *AlertRepo) UpdateAlertConfig(ctx context.Context, config *models.AlertConfig) error {
-	// 序列化 AgentIDs 和 NotificationChannelIDs
-	if len(config.AgentIDs) > 0 {
-		data, _ := json.Marshal(config.AgentIDs)
-		config.AgentIDsStr = string(data)
-	}
-	if len(config.NotificationChannelIDs) > 0 {
-		data, _ := json.Marshal(config.NotificationChannelIDs)
-		config.NotificationChannelIDsStr = string(data)
-	}
-
 	return r.db.WithContext(ctx).Save(config).Error
 }
 
@@ -122,14 +70,6 @@ func (r *AlertRepo) GetAlertConfig(ctx context.Context, id string) (*models.Aler
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&config).Error
 	if err != nil {
 		return nil, err
-	}
-
-	// 处理 AgentIDs 和 NotificationChannelIDs 的反序列化
-	if config.AgentIDsStr != "" {
-		_ = json.Unmarshal([]byte(config.AgentIDsStr), &config.AgentIDs)
-	}
-	if config.NotificationChannelIDsStr != "" {
-		_ = json.Unmarshal([]byte(config.NotificationChannelIDsStr), &config.NotificationChannelIDs)
 	}
 
 	return &config, nil

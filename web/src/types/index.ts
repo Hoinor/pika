@@ -48,16 +48,12 @@ export interface AgentInfo {
 export interface AggregatedCPUMetric {
     timestamp: number;
     avgUsage: number;
-    minUsage: number;
-    maxUsage: number;
     logicalCores: number;
 }
 
 export interface AggregatedMemoryMetric {
     timestamp: number;
     avgUsage: number;
-    minUsage: number;
-    maxUsage: number;
     total: number;
 }
 
@@ -66,8 +62,6 @@ export interface AggregatedNetworkMetric {
     interface: string;
     avgSentRate: number;
     avgRecvRate: number;
-    maxSentRate: number;
-    maxRecvRate: number;
     totalSent: number;
     totalRecv: number;
 }
@@ -77,9 +71,37 @@ export interface AggregatedLoadMetric {
     avgLoad1: number;
     avgLoad5: number;
     avgLoad15: number;
-    maxLoad1: number;
-    maxLoad5: number;
-    maxLoad15: number;
+}
+
+export interface AggregatedDiskMetric {
+    timestamp: number;
+    mountPoint: string;
+    avgUsage: number;
+    total: number;
+}
+
+export interface AggregatedDiskIOMetric {
+    timestamp: number;
+    device: string;
+    avgReadRate: number;
+    avgWriteRate: number;
+    totalReadBytes: number;
+    totalWriteBytes: number;
+}
+
+export interface AggregatedGPUMetric {
+    timestamp: number;
+    avgUtilization: number;
+    avgMemoryUsed: number;
+    avgTemperature: number;
+    avgPowerDraw: number;
+}
+
+export interface AggregatedTemperatureMetric {
+    timestamp: number;
+    sensorKey: string;
+    sensorLabel: string;
+    avgTemperature: number;
 }
 
 // 最新实时数据（单点数据，不需要聚合）
@@ -232,6 +254,8 @@ export interface DiskIOMetric {
     writeCount: number;
     readBytes: number;
     writeBytes: number;
+    readBytesRate: number;
+    writeBytesRate: number;
     readTime: number;
     writeTime: number;
     ioTime: number;

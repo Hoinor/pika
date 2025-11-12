@@ -164,6 +164,7 @@ func (r *MetricRepo) DeleteOldMetrics(ctx context.Context, beforeTimestamp int64
 		&models.GPUMetric{},
 		&models.TemperatureMetric{},
 		&models.DockerMetric{},
+		&models.MonitorMetric{},
 	}
 
 	// 对每个表进行分批删除
@@ -193,8 +194,6 @@ func (r *MetricRepo) DeleteOldMetrics(ctx context.Context, beforeTimestamp int64
 type AggregatedCPUMetric struct {
 	Timestamp    int64   `json:"timestamp"`
 	AvgUsage     float64 `json:"avgUsage"`
-	MinUsage     float64 `json:"minUsage"`
-	MaxUsage     float64 `json:"maxUsage"`
 	LogicalCores int     `json:"logicalCores"`
 }
 
@@ -207,8 +206,6 @@ func (r *MetricRepo) GetCPUMetrics(ctx context.Context, agentID string, start, e
 		SELECT
 			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
 			AVG(usage_percent) as avg_usage,
-			MIN(usage_percent) as min_usage,
-			MAX(usage_percent) as max_usage,
 			MAX(logical_cores) as logical_cores
 		FROM cpu_metrics
 		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
@@ -228,8 +225,6 @@ func (r *MetricRepo) GetCPUMetrics(ctx context.Context, agentID string, start, e
 type AggregatedMemoryMetric struct {
 	Timestamp int64   `json:"timestamp"`
 	AvgUsage  float64 `json:"avgUsage"`
-	MinUsage  float64 `json:"minUsage"`
-	MaxUsage  float64 `json:"maxUsage"`
 	Total     uint64  `json:"total"`
 }
 
@@ -241,8 +236,6 @@ func (r *MetricRepo) GetMemoryMetrics(ctx context.Context, agentID string, start
 		SELECT
 			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
 			AVG(usage_percent) as avg_usage,
-			MIN(usage_percent) as min_usage,
-			MAX(usage_percent) as max_usage,
 			MAX(total) as total
 		FROM memory_metrics
 		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
@@ -263,8 +256,6 @@ type AggregatedDiskMetric struct {
 	Timestamp  int64   `json:"timestamp"`
 	MountPoint string  `json:"mountPoint"`
 	AvgUsage   float64 `json:"avgUsage"`
-	MinUsage   float64 `json:"minUsage"`
-	MaxUsage   float64 `json:"maxUsage"`
 	Total      uint64  `json:"total"`
 }
 
@@ -277,8 +268,6 @@ func (r *MetricRepo) GetDiskMetrics(ctx context.Context, agentID string, start, 
 			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
 			mount_point,
 			AVG(usage_percent) as avg_usage,
-			MIN(usage_percent) as min_usage,
-			MAX(usage_percent) as max_usage,
 			MAX(total) as total
 		FROM disk_metrics
 		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
@@ -299,8 +288,6 @@ type AggregatedNetworkMetric struct {
 	Timestamp   int64   `json:"timestamp"`
 	AvgSentRate float64 `json:"avgSentRate"`
 	AvgRecvRate float64 `json:"avgRecvRate"`
-	MaxSentRate uint64  `json:"maxSentRate"`
-	MaxRecvRate uint64  `json:"maxRecvRate"`
 }
 
 // GetNetworkMetrics 获取聚合后的网络指标（合并所有网卡接口）
@@ -311,9 +298,7 @@ func (r *MetricRepo) GetNetworkMetrics(ctx context.Context, agentID string, star
 		SELECT
 			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
 			AVG(bytes_sent_rate) as avg_sent_rate,
-			AVG(bytes_recv_rate) as avg_recv_rate,
-			MAX(bytes_sent_rate) as max_sent_rate,
-			MAX(bytes_recv_rate) as max_recv_rate
+			AVG(bytes_recv_rate) as avg_recv_rate
 		FROM network_metrics
 		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
 		GROUP BY 1
@@ -334,9 +319,6 @@ type AggregatedLoadMetric struct {
 	AvgLoad1  float64 `json:"avgLoad1"`
 	AvgLoad5  float64 `json:"avgLoad5"`
 	AvgLoad15 float64 `json:"avgLoad15"`
-	MaxLoad1  float64 `json:"maxLoad1"`
-	MaxLoad5  float64 `json:"maxLoad5"`
-	MaxLoad15 float64 `json:"maxLoad15"`
 }
 
 // GetLoadMetrics 获取聚合后的负载指标（始终返回聚合数据）
@@ -348,10 +330,7 @@ func (r *MetricRepo) GetLoadMetrics(ctx context.Context, agentID string, start, 
 			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
 			AVG(load1) as avg_load1,
 			AVG(load5) as avg_load5,
-			AVG(load15) as avg_load15,
-			MAX(load1) as max_load1,
-			MAX(load5) as max_load5,
-			MAX(load15) as max_load15
+			AVG(load15) as avg_load15
 		FROM load_metrics
 		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
 		GROUP BY 1
@@ -449,4 +428,177 @@ func (r *MetricRepo) GetLatestLoadMetric(ctx context.Context, agentID string) (*
 		return nil, err
 	}
 	return &metric, nil
+}
+
+// SaveMonitorMetric 保存监控指标
+func (r *MetricRepo) SaveMonitorMetric(ctx context.Context, metric *models.MonitorMetric) error {
+	return r.db.WithContext(ctx).Create(metric).Error
+}
+
+// GetMonitorMetrics 获取监控指标列表
+func (r *MetricRepo) GetMonitorMetrics(ctx context.Context, agentID, monitorName string, start, end int64) ([]models.MonitorMetric, error) {
+	var metrics []models.MonitorMetric
+	query := r.db.WithContext(ctx).
+		Where("agent_id = ? AND timestamp >= ? AND timestamp <= ?", agentID, start, end)
+
+	// 如果指定了监控项名称，则只查询该监控项
+	if monitorName != "" {
+		query = query.Where("name = ?", monitorName)
+	}
+
+	err := query.Order("timestamp ASC").Find(&metrics).Error
+	return metrics, err
+}
+
+// GetLatestMonitorMetrics 获取最新的监控指标（每个监控项的最新一条）
+func (r *MetricRepo) GetLatestMonitorMetrics(ctx context.Context, agentID string) ([]models.MonitorMetric, error) {
+	// 先获取该 agent 下所有监控项名称
+	var names []string
+	err := r.db.WithContext(ctx).
+		Model(&models.MonitorMetric{}).
+		Where("agent_id = ?", agentID).
+		Distinct("name").
+		Pluck("name", &names).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 对每个监控项获取最新的一条记录
+	var metrics []models.MonitorMetric
+	for _, name := range names {
+		var metric models.MonitorMetric
+		err := r.db.WithContext(ctx).
+			Where("agent_id = ? AND name = ?", agentID, name).
+			Order("timestamp DESC").
+			First(&metric).Error
+		if err == nil {
+			metrics = append(metrics, metric)
+		}
+	}
+
+	return metrics, nil
+}
+
+// GetMonitorMetricsByName 获取指定监控项的历史数据
+func (r *MetricRepo) GetMonitorMetricsByName(ctx context.Context, agentID, monitorName string, start, end int64, limit int) ([]models.MonitorMetric, error) {
+	var metrics []models.MonitorMetric
+	query := r.db.WithContext(ctx).
+		Where("agent_id = ? AND name = ? AND timestamp >= ? AND timestamp <= ?", agentID, monitorName, start, end).
+		Order("timestamp DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	err := query.Find(&metrics).Error
+	return metrics, err
+}
+
+// AggregatedDiskIOMetric 磁盘IO聚合指标
+type AggregatedDiskIOMetric struct {
+	Timestamp       int64   `json:"timestamp"`
+	Device          string  `json:"device"`
+	AvgReadRate     float64 `json:"avgReadRate"`     // 平均读取速率(字节/秒)
+	AvgWriteRate    float64 `json:"avgWriteRate"`    // 平均写入速率(字节/秒)
+	TotalReadBytes  uint64  `json:"totalReadBytes"`  // 总读取字节数
+	TotalWriteBytes uint64  `json:"totalWriteBytes"` // 总写入字节数
+}
+
+// GetDiskIOMetrics 获取聚合后的磁盘IO指标
+func (r *MetricRepo) GetDiskIOMetrics(ctx context.Context, agentID string, start, end int64, interval int) ([]AggregatedDiskIOMetric, error) {
+	var metrics []AggregatedDiskIOMetric
+
+	// 计算速率需要根据时间差来计算，这里简化处理，直接计算平均值
+	query := `
+		SELECT
+			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
+			device,
+			AVG(read_bytes_rate) as avg_read_rate,
+			AVG(write_bytes_rate) as avg_write_rate,
+			CASE
+				WHEN MAX(read_bytes) >= MIN(read_bytes) THEN MAX(read_bytes) - MIN(read_bytes)
+				ELSE MAX(read_bytes)
+			END as total_read_bytes,
+			CASE
+				WHEN MAX(write_bytes) >= MIN(write_bytes) THEN MAX(write_bytes) - MIN(write_bytes)
+				ELSE MAX(write_bytes)
+			END as total_write_bytes
+		FROM disk_io_metrics
+		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY 1, device
+		ORDER BY timestamp ASC, device
+	`
+
+	intervalMs := int64(interval * 1000)
+	err := r.db.WithContext(ctx).
+		Raw(query, intervalMs, intervalMs, agentID, start, end).
+		Scan(&metrics).Error
+
+	return metrics, err
+}
+
+// AggregatedGPUMetric GPU聚合指标
+type AggregatedGPUMetric struct {
+	Timestamp      int64   `json:"timestamp"`
+	AvgUtilization float64 `json:"avgUtilization"`
+	AvgMemoryUsed  float64 `json:"avgMemoryUsed"`
+	AvgTemperature float64 `json:"avgTemperature"`
+	AvgPowerDraw   float64 `json:"avgPowerDraw"`
+}
+
+// GetGPUMetrics 获取聚合后的GPU指标
+func (r *MetricRepo) GetGPUMetrics(ctx context.Context, agentID string, start, end int64, interval int) ([]AggregatedGPUMetric, error) {
+	var metrics []AggregatedGPUMetric
+
+	query := `
+		SELECT
+			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
+			AVG(utilization) as avg_utilization,
+			AVG(memory_used) as avg_memory_used,
+			AVG(temperature) as avg_temperature,
+			AVG(power_draw) as avg_power_draw
+		FROM gpu_metrics
+		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY 1
+		ORDER BY timestamp ASC
+	`
+
+	intervalMs := int64(interval * 1000)
+	err := r.db.WithContext(ctx).
+		Raw(query, intervalMs, intervalMs, agentID, start, end).
+		Scan(&metrics).Error
+
+	return metrics, err
+}
+
+// AggregatedTemperatureMetric 温度聚合指标
+type AggregatedTemperatureMetric struct {
+	Timestamp      int64   `json:"timestamp"`
+	SensorKey      string  `json:"sensorKey"`
+	SensorLabel    string  `json:"sensorLabel"`
+	AvgTemperature float64 `json:"avgTemperature"`
+}
+
+// GetTemperatureMetrics 获取聚合后的温度指标
+func (r *MetricRepo) GetTemperatureMetrics(ctx context.Context, agentID string, start, end int64, interval int) ([]AggregatedTemperatureMetric, error) {
+	var metrics []AggregatedTemperatureMetric
+
+	query := `
+		SELECT
+			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
+			sensor_key,
+			sensor_label,
+			AVG(temperature) as avg_temperature
+		FROM temperature_metrics
+		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY 1, sensor_key, sensor_label
+		ORDER BY timestamp ASC, sensor_key
+	`
+
+	intervalMs := int64(interval * 1000)
+	err := r.db.WithContext(ctx).
+		Raw(query, intervalMs, intervalMs, agentID, start, end).
+		Scan(&metrics).Error
+
+	return metrics, err
 }

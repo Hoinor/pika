@@ -145,19 +145,3 @@ func (h *AlertHandler) ListAlertRecords(c echo.Context) error {
 		"offset":  offset,
 	})
 }
-
-// TestNotification 测试告警通知
-func (h *AlertHandler) TestNotification(c echo.Context) error {
-	id := c.Param("id")
-
-	if err := h.alertService.TestNotification(c.Request().Context(), id); err != nil {
-		h.logger.Error("测试告警通知失败", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "测试告警通知失败: " + err.Error(),
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "测试通知已发送",
-	})
-}

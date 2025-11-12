@@ -48,6 +48,5 @@ auto_update:
   # 更新地址会自动从 server.endpoint 获取
   enabled: true
 
-  # 检查更新间隔（小时）
-  # 建议: 6-24 小时
-  check_interval: 24
+  # 检查更新间隔
+  check_interval: 10m

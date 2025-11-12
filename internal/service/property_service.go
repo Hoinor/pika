@@ -3,11 +3,17 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/repo"
 	"go.uber.org/zap"
+)
+
+const (
+	// PropertyIDNotificationChannels 通知渠道配置的固定 ID
+	PropertyIDNotificationChannels = "notification_channels"
 )
 
 type PropertyService struct {
@@ -62,4 +68,13 @@ func (s *PropertyService) Set(ctx context.Context, id string, name string, value
 // Delete 删除属性
 func (s *PropertyService) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *PropertyService) GetNotificationChannelConfigs(ctx context.Context) ([]models.NotificationChannelConfig, error) {
+	var allChannels []models.NotificationChannelConfig
+	err := s.GetValue(ctx, PropertyIDNotificationChannels, &allChannels)
+	if err != nil {
+		return nil, fmt.Errorf("获取通知渠道配置失败: %w", err)
+	}
+	return allChannels, nil
 }

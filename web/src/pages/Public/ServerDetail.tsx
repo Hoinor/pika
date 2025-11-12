@@ -21,6 +21,11 @@ import type {
     AggregatedCPUMetric,
     AggregatedMemoryMetric,
     AggregatedNetworkMetric,
+    AggregatedLoadMetric,
+    AggregatedDiskMetric,
+    AggregatedDiskIOMetric,
+    AggregatedGPUMetric,
+    AggregatedTemperatureMetric,
     LatestMetrics
 } from '../../types';
 
@@ -248,26 +253,46 @@ const ServerDetail = () => {
         cpu: AggregatedCPUMetric[];
         memory: AggregatedMemoryMetric[];
         network: AggregatedNetworkMetric[];
+        load: AggregatedLoadMetric[];
+        disk: AggregatedDiskMetric[];
+        diskIO: AggregatedDiskIOMetric[];
+        gpu: AggregatedGPUMetric[];
+        temperature: AggregatedTemperatureMetric[];
     }>({
         cpu: [],
         memory: [],
         network: [],
+        load: [],
+        disk: [],
+        diskIO: [],
+        gpu: [],
+        temperature: [],
     });
 
     const loadMetrics = async () => {
         if (!id) return;
 
         try {
-            const [cpuRes, memoryRes, networkRes] = await Promise.all([
+            const [cpuRes, memoryRes, networkRes, loadRes, diskRes, diskIORes, gpuRes, temperatureRes] = await Promise.all([
                 getAgentMetrics({agentId: id, type: 'cpu', range: timeRange}),
                 getAgentMetrics({agentId: id, type: 'memory', range: timeRange}),
                 getAgentMetrics({agentId: id, type: 'network', range: timeRange}),
+                getAgentMetrics({agentId: id, type: 'load', range: timeRange}),
+                getAgentMetrics({agentId: id, type: 'disk', range: timeRange}),
+                getAgentMetrics({agentId: id, type: 'disk_io', range: timeRange}),
+                getAgentMetrics({agentId: id, type: 'gpu', range: timeRange}),
+                getAgentMetrics({agentId: id, type: 'temperature', range: timeRange}),
             ]);
 
             setMetricsData({
                 cpu: cpuRes.data.metrics || [],
                 memory: memoryRes.data.metrics || [],
                 network: networkRes.data.metrics || [],
+                load: loadRes.data.metrics || [],
+                disk: diskRes.data.metrics || [],
+                diskIO: diskIORes.data.metrics || [],
+                gpu: gpuRes.data.metrics || [],
+                temperature: temperatureRes.data.metrics || [],
             });
         } catch (error) {
             console.error('Failed to load metrics:', error);
@@ -392,6 +417,121 @@ const ServerDetail = () => {
             download: Number(item.download.toFixed(2)),
         }));
     }, [metricsData.network, selectedInterface]);
+
+    // Load 图表数据 (三条线: load1, load5, load15)
+    const loadChartData = useMemo(
+        () =>
+            metricsData.load.map((item) => ({
+                time: new Date(item.timestamp).toLocaleTimeString('zh-CN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+                load1: Number(item.avgLoad1.toFixed(2)),
+                load5: Number(item.avgLoad5.toFixed(2)),
+                load15: Number(item.avgLoad15.toFixed(2)),
+            })),
+        [metricsData.load]
+    );
+
+    // Disk 图表数据（汇总所有挂载点的平均使用率）
+    const diskChartData = useMemo(() => {
+        const aggregated: Record<string, { time: string; usage: number; count: number }> = {};
+
+        metricsData.disk.forEach((item) => {
+            const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            if (!aggregated[time]) {
+                aggregated[time] = {time, usage: 0, count: 0};
+            }
+
+            aggregated[time].usage += item.avgUsage;
+            aggregated[time].count += 1;
+        });
+
+        return Object.values(aggregated).map((item) => ({
+            time: item.time,
+            usage: Number((item.usage / item.count).toFixed(2)),
+        }));
+    }, [metricsData.disk]);
+
+    // Disk I/O 图表数据（汇总所有磁盘）
+    const diskIOChartData = useMemo(() => {
+        const aggregated: Record<string, { time: string; read: number; write: number }> = {};
+
+        metricsData.diskIO.forEach((item) => {
+            const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            if (!aggregated[time]) {
+                aggregated[time] = {time, read: 0, write: 0};
+            }
+
+            // 转换为 MB/s
+            aggregated[time].read += item.avgReadRate / 1024 / 1024;
+            aggregated[time].write += item.avgWriteRate / 1024 / 1024;
+        });
+
+        return Object.values(aggregated).map((item) => ({
+            ...item,
+            read: Number(item.read.toFixed(2)),
+            write: Number(item.write.toFixed(2)),
+        }));
+    }, [metricsData.diskIO]);
+
+    // GPU 图表数据（汇总所有GPU的平均利用率）
+    const gpuChartData = useMemo(() => {
+        const aggregated: Record<string, { time: string; utilization: number; temperature: number; count: number }> = {};
+
+        metricsData.gpu.forEach((item) => {
+            const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            if (!aggregated[time]) {
+                aggregated[time] = {time, utilization: 0, temperature: 0, count: 0};
+            }
+
+            aggregated[time].utilization += item.avgUtilization;
+            aggregated[time].temperature += item.avgTemperature;
+            aggregated[time].count += 1;
+        });
+
+        return Object.values(aggregated).map((item) => ({
+            time: item.time,
+            utilization: Number((item.utilization / item.count).toFixed(2)),
+            temperature: Number((item.temperature / item.count).toFixed(2)),
+        }));
+    }, [metricsData.gpu]);
+
+    // Temperature 图表数据（所有传感器的平均温度）
+    const temperatureChartData = useMemo(() => {
+        const aggregated: Record<string, { time: string; temperature: number; count: number }> = {};
+
+        metricsData.temperature.forEach((item) => {
+            const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            if (!aggregated[time]) {
+                aggregated[time] = {time, temperature: 0, count: 0};
+            }
+
+            aggregated[time].temperature += item.avgTemperature;
+            aggregated[time].count += 1;
+        });
+
+        return Object.values(aggregated).map((item) => ({
+            time: item.time,
+            temperature: Number((item.temperature / item.count).toFixed(2)),
+        }));
+    }, [metricsData.temperature]);
 
     const snapshotCards = useMemo(() => {
         if (!latestMetrics) {
@@ -825,7 +965,7 @@ const ServerDetail = () => {
                                                 type="monotone"
                                                 dataKey="upload"
                                                 name="上行"
-                                                stroke="#dc2626"
+                                                stroke="#6FD598"
                                                 strokeWidth={2}
                                                 dot={false}
                                                 activeDot={{r: 3}}
@@ -834,7 +974,7 @@ const ServerDetail = () => {
                                                 type="monotone"
                                                 dataKey="download"
                                                 name="下行"
-                                                stroke="#2563eb"
+                                                stroke="#2C70F6"
                                                 strokeWidth={2}
                                                 dot={false}
                                                 activeDot={{r: 3}}
@@ -848,6 +988,267 @@ const ServerDetail = () => {
                                     </div>
                                 )}
                             </div>
+
+                            <div>
+                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <span
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                                        <Activity className="h-4 w-4"/>
+                                    </span>
+                                    系统负载 (Load Average)
+                                </h3>
+                                {loadChartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <LineChart data={loadChartData}>
+                                            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4"/>
+                                            <XAxis
+                                                dataKey="time"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <YAxis
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <Tooltip content={<CustomTooltip unit=""/>}/>
+                                            <Legend/>
+                                            <Line
+                                                type="monotone"
+                                                dataKey="load1"
+                                                name="1分钟"
+                                                stroke="#7EB26D"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="load5"
+                                                name="5分钟"
+                                                stroke="#EAB839"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="load15"
+                                                name="15分钟"
+                                                stroke="#EF843C"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div
+                                        className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
+                                        暂无数据
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <span
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
+                                        <HardDrive className="h-4 w-4"/>
+                                    </span>
+                                    磁盘使用率
+                                </h3>
+                                {diskChartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <AreaChart data={diskChartData}>
+                                            <defs>
+                                                <linearGradient id="diskAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#9333ea" stopOpacity={0.4}/>
+                                                    <stop offset="95%" stopColor="#9333ea" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4"/>
+                                            <XAxis
+                                                dataKey="time"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <YAxis
+                                                domain={[0, 100]}
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                                tickFormatter={(value) => `${value}%`}
+                                            />
+                                            <Tooltip content={<CustomTooltip unit="%"/>}/>
+                                            <Area
+                                                type="monotone"
+                                                dataKey="usage"
+                                                name="磁盘使用率"
+                                                stroke="#9333ea"
+                                                strokeWidth={2}
+                                                fill="url(#diskAreaGradient)"
+                                                activeDot={{r: 3}}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div
+                                        className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
+                                        暂无数据
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <span
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                                        <HardDrive className="h-4 w-4"/>
+                                    </span>
+                                    磁盘 I/O (MB/s)
+                                </h3>
+                                {diskIOChartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <LineChart data={diskIOChartData}>
+                                            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4"/>
+                                            <XAxis
+                                                dataKey="time"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <YAxis
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                                tickFormatter={(value) => `${value} MB`}
+                                            />
+                                            <Tooltip content={<CustomTooltip unit=" MB"/>}/>
+                                            <Legend/>
+                                            <Line
+                                                type="monotone"
+                                                dataKey="read"
+                                                name="读取"
+                                                stroke="#2C70F6"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="write"
+                                                name="写入"
+                                                stroke="#6FD598"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div
+                                        className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
+                                        暂无数据
+                                    </div>
+                                )}
+                            </div>
+
+                            {gpuChartData.length > 0 && (
+                                <div>
+                                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                        <span
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                                            <Zap className="h-4 w-4"/>
+                                        </span>
+                                        GPU 使用率与温度
+                                    </h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <LineChart data={gpuChartData}>
+                                            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4"/>
+                                            <XAxis
+                                                dataKey="time"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <YAxis
+                                                yAxisId="left"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                                tickFormatter={(value) => `${value}%`}
+                                            />
+                                            <YAxis
+                                                yAxisId="right"
+                                                orientation="right"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                                tickFormatter={(value) => `${value}°C`}
+                                            />
+                                            <Tooltip content={<CustomTooltip unit=""/>}/>
+                                            <Legend/>
+                                            <Line
+                                                yAxisId="left"
+                                                type="monotone"
+                                                dataKey="utilization"
+                                                name="使用率 (%)"
+                                                stroke="#7c3aed"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                            <Line
+                                                yAxisId="right"
+                                                type="monotone"
+                                                dataKey="temperature"
+                                                name="温度 (°C)"
+                                                stroke="#f97316"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{r: 3}}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+
+                            {temperatureChartData.length > 0 && (
+                                <div>
+                                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                        <span
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+                                            <Thermometer className="h-4 w-4"/>
+                                        </span>
+                                        系统温度
+                                    </h3>
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <AreaChart data={temperatureChartData}>
+                                            <defs>
+                                                <linearGradient id="tempAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
+                                                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4"/>
+                                            <XAxis
+                                                dataKey="time"
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                            />
+                                            <YAxis
+                                                stroke="#94a3b8"
+                                                style={{fontSize: '12px'}}
+                                                tickFormatter={(value) => `${value}°C`}
+                                            />
+                                            <Tooltip content={<CustomTooltip unit="°C"/>}/>
+                                            <Area
+                                                type="monotone"
+                                                dataKey="temperature"
+                                                name="平均温度"
+                                                stroke="#f97316"
+                                                strokeWidth={2}
+                                                fill="url(#tempAreaGradient)"
+                                                activeDot={{r: 3}}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
                         </div>
                     </Card>
 

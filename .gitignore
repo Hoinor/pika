@@ -38,3 +38,4 @@ go.work.sum
 .DS_Store
 
 config.yaml
+agent.yaml

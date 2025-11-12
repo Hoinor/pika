@@ -2,21 +2,15 @@ package models
 
 // AlertConfig 告警配置
 type AlertConfig struct {
-	ID          string   `gorm:"primaryKey" json:"id"`                  // 告警配置ID (UUID)
-	AgentID     string   `gorm:"index" json:"agentId"`                  // 探针ID（全局配置使用"global"）
-	AgentIDs    []string `gorm:"-" json:"agentIds"`                     // 监控的探针ID列表（前端使用）
-	AgentIDsStr string   `json:"-" gorm:"column:agent_ids"`             // 数据库存储（JSON序列化）
-	Name        string   `json:"name"`                                  // 告警配置名称
-	Enabled     bool     `json:"enabled"`                               // 是否启用
-	CreatedAt   int64    `json:"createdAt"`                             // 创建时间（时间戳毫秒）
-	UpdatedAt   int64    `json:"updatedAt" gorm:"autoUpdateTime:milli"` // 更新时间（时间戳毫秒）
+	ID        string `gorm:"primaryKey" json:"id"`                  // 告警配置ID (UUID)
+	AgentID   string `gorm:"index" json:"agentId"`                  // 探针ID（全局配置使用"global"）
+	Name      string `json:"name"`                                  // 告警配置名称
+	Enabled   bool   `json:"enabled"`                               // 是否启用
+	CreatedAt int64  `json:"createdAt"`                             // 创建时间（时间戳毫秒）
+	UpdatedAt int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"` // 更新时间（时间戳毫秒）
 
 	// 告警规则
 	Rules AlertRules `gorm:"embedded;embeddedPrefix:rule_" json:"rules"`
-
-	// 通知渠道ID列表
-	NotificationChannelIDs    []string `gorm:"-" json:"notificationChannelIds"`          // 通知渠道ID列表（前端使用）
-	NotificationChannelIDsStr string   `json:"-" gorm:"column:notification_channel_ids"` // 数据库存储（JSON序列化）
 }
 
 // AlertRules 告警规则

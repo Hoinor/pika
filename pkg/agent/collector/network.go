@@ -15,6 +15,23 @@ type NetworkCollector struct {
 	lastCollectAt time.Time                     // 上次采集时间
 }
 
+// safeDelta 计算网络计数器的增量,当出现重置或回绕时返回当前值避免溢出
+func safeDelta(current, previous uint64) uint64 {
+	if current >= previous {
+		return current - previous
+	}
+	// 计数器被重置(例如接口重启)或发生回绕,只能依赖当前值
+	return current
+}
+
+// calcRate 根据增量和采样间隔计算每秒速率
+func calcRate(delta uint64, intervalSeconds float64) uint64 {
+	if intervalSeconds <= 0 || delta == 0 {
+		return 0
+	}
+	return uint64(float64(delta) / intervalSeconds)
+}
+
 // NewNetworkCollector 创建网络采集器
 func NewNetworkCollector(cfg *config.Config) *NetworkCollector {
 	return &NetworkCollector{
@@ -83,23 +100,18 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 
 		// 计算增量(如果是第一次采集,则使用当前值)
 		lastStat, exists := n.lastStats[counter.Name]
-		if exists && intervalSeconds > 0 {
-			// 计算增量并转换为每秒速率
-			bytesSentDelta := counter.BytesSent - lastStat.BytesSent
-			bytesRecvDelta := counter.BytesRecv - lastStat.BytesRecv
-
-			// 存储每秒的速率(转为整数)
-			netData.BytesSentRate = uint64(float64(bytesSentDelta) / intervalSeconds)
-			netData.BytesRecvRate = uint64(float64(bytesRecvDelta) / intervalSeconds)
-			netData.BytesSentTotal = counter.BytesSent
-			netData.BytesRecvTotal = counter.BytesRecv
+		if exists {
+			bytesSentDelta := safeDelta(counter.BytesSent, lastStat.BytesSent)
+			bytesRecvDelta := safeDelta(counter.BytesRecv, lastStat.BytesRecv)
+			netData.BytesSentRate = calcRate(bytesSentDelta, intervalSeconds)
+			netData.BytesRecvRate = calcRate(bytesRecvDelta, intervalSeconds)
 		} else {
-			// 第一次采集,使用0值(避免返回巨大的累计值)
+			// 第一次采集无增量,速率保持为0
 			netData.BytesSentRate = 0
 			netData.BytesRecvRate = 0
-			netData.BytesSentTotal = counter.BytesSent
-			netData.BytesRecvTotal = counter.BytesRecv
 		}
+		netData.BytesSentTotal = counter.BytesSent
+		netData.BytesRecvTotal = counter.BytesRecv
 
 		// 保存当前统计数据用于下次计算增量
 		n.lastStats[counter.Name] = counter
