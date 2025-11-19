@@ -72,7 +72,6 @@ const formatDateTime = (value: string | number | undefined | null): string => {
 };
 
 const timeRangeOptions = [
-    {label: '5分钟', value: '5m'},
     {label: '15分钟', value: '15m'},
     {label: '30分钟', value: '30m'},
     {label: '1小时', value: '1h'},
@@ -431,7 +430,7 @@ const ServerDetail = () => {
     const {id} = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const [timeRange, setTimeRange] = useState<TimeRange>('5m');
+    const [timeRange, setTimeRange] = useState<TimeRange>('15m');
     const [selectedInterface, setSelectedInterface] = useState<string>('all');
     const {agent, latestMetrics, loading} = useAgentOverview(id);
     const metricsData = useAggregatedMetrics(id, timeRange);
