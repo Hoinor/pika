@@ -33,7 +33,7 @@ App:
     Issuer: "https://your-oidc-provider.com"
     ClientID: "your-client-id"
     ClientSecret: "your-client-secret"
-    RedirectURL: "http://localhost:8080/login/oidc/callback"  # 前端回调页面
+    RedirectURL: "http://localhost:8080/oidc/callback"  # 前端回调页面
 
   # GitHub OAuth 认证配置（可选）
   # 创建 GitHub OAuth App: https://github.com/settings/developers
@@ -41,7 +41,7 @@ App:
     Enabled: false
     ClientID: "your-github-client-id"
     ClientSecret: "your-github-client-secret"
-    RedirectURL: "http://localhost:8080/login/github/callback"  # 前端回调页面
+    RedirectURL: "http://localhost:8080/github/callback"  # 前端回调页面
     AllowedUsers:  # 允许登录的 GitHub 用户名白名单，不配置或留空则允许所有用户
       - "your-github-username"
       - "another-username"
