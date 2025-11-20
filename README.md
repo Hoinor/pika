@@ -26,22 +26,69 @@ Pika 是一个轻量级的探针监控系统，支持实时数据采集、存储
 ```bash
 # 下载 docker-compose.yml 配置文件
 curl -O https://raw.githubusercontent.com/dushixiang/pika/main/docker-compose.yml
+# 下载配置文件示例
+curl -o config.yaml https://raw.githubusercontent.com/dushixiang/pika/main/config.example.yaml
 
 # 或使用 wget
 wget https://raw.githubusercontent.com/dushixiang/pika/main/docker-compose.yml
+wget -O config.yaml https://raw.githubusercontent.com/dushixiang/pika/main/config.example.yaml
 ```
 
-#### 2. 修改配置（可选）
+#### 2. 修改配置（重要）
 
-编辑 `docker-compose.yml` 文件，根据需要修改以下配置：
+编辑 `config.yaml` 文件，根据需要修改以下配置：
 
-- **数据库密码**：`POSTGRES_PASSWORD` 和 `DATABASE_POSTGRES_PASSWORD`（生产环境建议修改）
-- **JWT 密钥**：`APP_JWT_SECRET`（必须修改为至少 32 位的随机字符串）
+- **数据库配置**：确保数据库连接信息与 `docker-compose.yml` 中的 PostgreSQL 服务配置一致
+  ```yaml
+  Database:
+    Postgres:
+      Hostname: pika-postgresql  # Docker Compose 服务名
+      Port: 5432
+      Username: pika
+      Password: pika  # 生产环境建议修改
+      Database: pika
+  ```
 
-生成随机密钥：
-```bash
-openssl rand -base64 32
-```
+- **JWT 密钥**：必须修改为强随机字符串
+  ```yaml
+  App:
+    JWT:
+      Secret: "your-secret-key-here"  # 必须修改
+  ```
+
+  生成随机密钥：
+  ```bash
+  openssl rand -base64 32
+  ```
+
+- **用户认证**：配置管理员账户或启用 OIDC/GitHub 登录
+  ```yaml
+  App:
+    # Basic Auth 用户（默认用户名: admin，密码: admin123）
+    Users:
+      admin: "$2y$12$7DXcOiX1D59xNTIn5riUKusAPLP88LxxoczWmUT83MBj5EFznbp8a"
+
+    # 可选：启用 OIDC 认证
+    OIDC:
+      Enabled: false
+      Issuer: "https://your-oidc-provider.com"
+      ClientID: "your-client-id"
+      ClientSecret: "your-client-secret"
+
+    # 可选：启用 GitHub OAuth
+    GitHub:
+      Enabled: false
+      ClientID: "your-github-client-id"
+      ClientSecret: "your-github-client-secret"
+  ```
+
+- **生成新的管理员密码**：
+  ```bash
+  # 使用 htpasswd 工具
+  htpasswd -nBC 12 '' | tr -d ':\n'
+  ```
+
+**注意**：如果修改了 `docker-compose.yml` 中的数据库密码（`POSTGRES_PASSWORD`），也需要同步修改 `config.yaml` 中的数据库密码
 
 #### 3. 启动服务
 
@@ -77,10 +124,13 @@ docker-compose down -v
 
 #### 1. 安全配置
 
-- 修改默认的数据库密码
-- 设置强随机的 JWT 密钥
+- 修改 `docker-compose.yml` 中的默认数据库密码（`POSTGRES_PASSWORD`）
+- 修改 `config.yaml` 中的数据库密码（`Database.Postgres.Password`），与 docker-compose 中的设置保持一致
+- 在 `config.yaml` 中设置强随机的 JWT 密钥（`App.JWT.Secret`）
+- 修改默认管理员密码或启用 OIDC/GitHub 认证
 - 使用 HTTPS 反向代理（如 Nginx）
-- 限制数据库端口仅允许内部访问
+- 限制数据库端口仅允许内部访问（docker-compose.yml 中已配置为 `127.0.0.1:5432:5432`）
+- 妥善保管 `config.yaml` 文件，避免泄露敏感信息
 
 #### 2. 数据持久化
 
@@ -134,8 +184,22 @@ docker-compose restart
 #### 数据库连接失败
 
 - 确认 PostgreSQL 容器已启动且健康检查通过
-- 检查数据库配置是否正确
+- 检查 `config.yaml` 中的数据库配置是否正确：
+  - `Hostname` 应该为 `pika-postgresql`（Docker Compose 服务名）
+  - `Password` 应该与 `docker-compose.yml` 中的 `POSTGRES_PASSWORD` 一致
+- 确认 `config.yaml` 文件已正确映射到容器中
 - 查看数据库日志：`docker-compose logs postgresql`
+- 查看应用日志：`docker-compose logs pika`
+
+#### 配置文件问题
+
+- 确认 `config.yaml` 文件存在于与 `docker-compose.yml` 同一目录
+- 检查 `config.yaml` 文件格式是否正确（YAML 语法）
+- 验证配置文件权限：`ls -l config.yaml`
+- 查看容器内是否成功加载配置：
+  ```bash
+  docker-compose exec pika cat /app/config.yaml
+  ```
 
 #### 端口冲突
 

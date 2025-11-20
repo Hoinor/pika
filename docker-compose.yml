@@ -24,16 +24,8 @@ services:
   pika:
     image: dushixiang/pika:latest
     container_name: pika-server
-    environment:
-      DATABASE_POSTGRES_HOSTNAME: pika-postgresql
-      DATABASE_POSTGRES_PORT: 5432
-      DATABASE_POSTGRES_USERNAME: pika
-      DATABASE_POSTGRES_PASSWORD: pika
-      DATABASE_POSTGRES_DATABASE: pika
-      SERVER_ADDR: "0.0.0.0:8080"
-      SERVER_IP_EXTRACTOR: "x-forwarded-for"
-      # 请修改为您自己的 JWT 密钥,建议使用至少 32 位的随机字符串
-      APP_JWT_SECRET: "change-this-to-your-own-secret-key-at-least-32-characters"
+    volumes:
+      - ./config.yaml:/app/config.yaml
     ports:
       - "8080:8080"
     depends_on:
