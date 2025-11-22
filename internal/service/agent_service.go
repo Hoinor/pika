@@ -786,3 +786,8 @@ func (s *AgentService) GetAgentByAuth(ctx context.Context, id string, isAuthenti
 	}
 	return s.AgentRepo.FindPublicAgentByID(ctx, id)
 }
+
+// GetAllTags 获取所有探针的标签
+func (s *AgentService) GetAllTags(ctx context.Context) ([]string, error) {
+	return s.AgentRepo.GetAllTags(ctx)
+}

@@ -432,8 +432,7 @@ func (h *AgentHandler) GetAgents(c echo.Context) error {
 			"os":         agent.OS,
 			"arch":       agent.Arch,
 			"version":    agent.Version,
-			"platform":   agent.Platform,
-			"location":   agent.Location,
+			"tags":       agent.Tags,
 			"expireTime": agent.ExpireTime,
 			"status":     agent.Status,
 			"lastSeenAt": agent.LastSeenAt,
@@ -561,16 +560,15 @@ func (h *AgentHandler) ListAuditResults(c echo.Context) error {
 	})
 }
 
-// UpdateInfo 更新探针信息（名称、平台、位置、到期时间）
+// UpdateInfo 更新探针信息（名称、标签、到期时间、可见性）
 func (h *AgentHandler) UpdateInfo(c echo.Context) error {
 	agentID := c.Param("id")
 
 	var req struct {
-		Name       string `json:"name"`
-		Platform   string `json:"platform"`
-		Location   string `json:"location"`
-		ExpireTime int64  `json:"expireTime"`
-		Visibility string `json:"visibility"`
+		Name       string   `json:"name"`
+		Tags       []string `json:"tags"`
+		ExpireTime int64    `json:"expireTime"`
+		Visibility string   `json:"visibility"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return orz.NewError(400, "请求参数错误")
@@ -580,8 +578,7 @@ func (h *AgentHandler) UpdateInfo(c echo.Context) error {
 	var updates = models.Agent{
 		ID:         agentID,
 		Name:       req.Name,
-		Platform:   req.Platform,
-		Location:   req.Location,
+		Tags:       req.Tags,
 		ExpireTime: req.ExpireTime,
 		Visibility: req.Visibility,
 		UpdatedAt:  time.Now().UnixMilli(),
@@ -700,5 +697,19 @@ func (h *AgentHandler) Delete(c echo.Context) error {
 
 	return orz.Ok(c, orz.Map{
 		"message": "删除成功",
+	})
+}
+
+// GetTags 获取所有探针的标签
+func (h *AgentHandler) GetTags(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	tags, err := h.agentService.GetAllTags(ctx)
+	if err != nil {
+		return err
+	}
+
+	return orz.Ok(c, orz.Map{
+		"tags": tags,
 	})
 }

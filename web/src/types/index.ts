@@ -22,8 +22,7 @@ export interface Agent {
     os: string;
     arch: string;
     version: string;
-    platform?: string;       // 平台
-    location?: string;       // 位置
+    tags?: string[];         // 标签
     expireTime?: number;     // 到期时间（时间戳毫秒）
     status: number;
     visibility?: string;     // 可见性: public-匿名可见, private-登录可见

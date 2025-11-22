@@ -183,12 +183,12 @@ export const updateAgentName = (agentId: string, name: string) => {
     return put(`/admin/agents/${agentId}/name`, {name});
 };
 
-// 更新探针信息（名称、平台、位置、到期时间）
+// 更新探针信息（名称、标签、到期时间、可见性）
 export interface UpdateAgentInfoRequest {
     name?: string;
-    platform?: string;
-    location?: string;
+    tags?: string[];
     expireTime?: number;
+    visibility?: string;
 }
 
 export const updateAgentInfo = (agentId: string, data: UpdateAgentInfoRequest) => {
@@ -219,4 +219,13 @@ export const getServerVersion = () => {
 // 删除探针
 export const deleteAgent = (agentId: string) => {
     return del(`/admin/agents/${agentId}`);
+};
+
+// 获取所有探针的标签
+export interface GetTagsResponse {
+    tags: string[];
+}
+
+export const getTags = () => {
+    return get<GetTagsResponse>('/admin/agents/tags');
 };

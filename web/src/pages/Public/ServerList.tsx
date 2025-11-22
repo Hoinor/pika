@@ -169,17 +169,14 @@ const ServerList = () => {
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                    {agent.platform && (
-                                        <span
-                                            className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5">
-                                            <span className="font-medium">平台:</span> {agent.platform}
-                                        </span>
-                                    )}
-                                    {agent.location && (
-                                        <span
-                                            className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5">
-                                            <span className="font-medium">位置:</span> {agent.location}
-                                        </span>
+                                    {agent.tags && agent.tags.length > 0 && (
+                                        agent.tags?.map((tag, index) => (
+                                            <span
+                                                key={index}
+                                                className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-blue-700">
+                                                {tag}
+                                            </span>
+                                        ))
                                     )}
                                     {agent.expireTime > 0 && (
                                         <span
@@ -350,15 +347,12 @@ const ServerList = () => {
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                            {agent.platform && (
-                                                <span className="inline-flex items-center gap-1">
-                                                    <span className="font-medium">平台:</span> {agent.platform}
-                                                </span>
-                                            )}
-                                            {agent.location && (
-                                                <span className="inline-flex items-center gap-1">
-                                                    <span className="font-medium">位置:</span> {agent.location}
-                                                </span>
+                                            {agent.tags && agent.tags.length > 0 && (
+                                                agent.tags?.map((tag, index) => (
+                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700">
+                                                        {tag}
+                                                    </span>
+                                                ))
                                             )}
                                             {agent.expireTime > 0 && (
                                                 <span className="inline-flex items-center gap-1 text-amber-700">

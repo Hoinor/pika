@@ -172,3 +172,34 @@ func (r *AgentRepo) FindPublicAgentByID(ctx context.Context, id string) (*models
 	}
 	return &agent, nil
 }
+
+// GetAllTags 获取所有探针的标签（去重）
+func (r *AgentRepo) GetAllTags(ctx context.Context) ([]string, error) {
+	var agents []models.Agent
+	err := r.db.WithContext(ctx).
+		Select("tags").
+		Find(&agents).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 使用map去重
+	tagMap := make(map[string]bool)
+	for _, agent := range agents {
+		if agent.Tags != nil {
+			for _, tag := range agent.Tags {
+				if tag != "" {
+					tagMap[tag] = true
+				}
+			}
+		}
+	}
+
+	// 转换为切片
+	tags := make([]string, 0, len(tagMap))
+	for tag := range tagMap {
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
+}

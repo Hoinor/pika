@@ -177,6 +177,7 @@ func setupApi(app *orz.App, components *AppComponents) {
 		// 探针管理（管理员功能）
 		adminApi.GET("/agents", components.AgentHandler.Paging)
 		adminApi.GET("/agents/statistics", components.AgentHandler.GetStatistics)
+		adminApi.GET("/agents/tags", components.AgentHandler.GetTags)
 		adminApi.GET("/agents/:id", components.AgentHandler.GetForAdmin)
 		adminApi.PUT("/agents/:id", components.AgentHandler.UpdateInfo)
 		adminApi.DELETE("/agents/:id", components.AgentHandler.Delete)

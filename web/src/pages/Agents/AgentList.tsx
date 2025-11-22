@@ -1,11 +1,11 @@
-import {useRef, useState} from 'react';
+import {useRef, useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
 import {App, Button, DatePicker, Divider, Dropdown, Form, Input, Modal, Select, Space, Tag} from 'antd';
 import type {MenuProps} from 'antd';
 import {Edit, Eye, RefreshCw, Plus, Shield, Trash2, MoreVertical} from 'lucide-react';
-import {deleteAgent, getAgentPaging, updateAgentInfo} from '../../api/agent';
+import {deleteAgent, getAgentPaging, getTags, updateAgentInfo} from '../../api/agent';
 import type {Agent} from '../../types';
 import {getErrorMessage} from '../../lib/utils';
 import dayjs from 'dayjs';
@@ -19,14 +19,27 @@ const AgentList = () => {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
     const [loading, setLoading] = useState(false);
+    const [existingTags, setExistingTags] = useState<string[]>([]);
+
+    // 加载已有的标签
+    useEffect(() => {
+        const loadTags = async () => {
+            try {
+                const response = await getTags();
+                setExistingTags(response.data.tags || []);
+            } catch (error) {
+                console.error('加载标签失败:', error);
+            }
+        };
+        loadTags();
+    }, []);
 
     // 打开编辑模态框
     const handleEdit = (agent: Agent) => {
         setCurrentAgent(agent);
         form.setFieldsValue({
             name: agent.name,
-            platform: agent.platform,
-            location: agent.location,
+            tags: agent.tags || [],
             expireTime: agent.expireTime ? dayjs(agent.expireTime) : null,
             visibility: agent.visibility || 'public',
         });
@@ -45,9 +58,8 @@ const AgentList = () => {
             // 转换到期时间为时间戳（设置为当天的23:59:59）
             const data: any = {
                 name: values.name,
-                platform: values.platform,
-                location: values.location,
                 visibility: values.visibility || 'public',
+                tags: values.tags || [],
             };
 
             if (values.expireTime) {
@@ -108,18 +120,24 @@ const AgentList = () => {
             ),
         },
         {
-            title: '平台',
-            dataIndex: 'platform',
-            key: 'platform',
+            title: '标签',
+            dataIndex: 'tags',
+            key: 'tags',
             hideInSearch: true,
-            render: (text) => text ? <Tag color="purple" bordered={false}>{text}</Tag> : '-',
-        },
-        {
-            title: '位置',
-            dataIndex: 'location',
-            key: 'location',
-            hideInSearch: true,
-            render: (text) => text ? <Tag color="blue" bordered={false}>{text}</Tag> : '-',
+            width: 200,
+            render: (_, record) => (
+                <>
+                    {record.tags && record.tags?.length > 0 ? (
+                        record.tags?.map((tag, index) => (
+                            <Tag key={index} color="blue" bordered={false} style={{ marginBottom: 4 }}>
+                                {tag}
+                            </Tag>
+                        ))
+                    ) : (
+                        '-'
+                    )}
+                </>
+            ),
         },
         {
             title: '到期时间',
@@ -349,16 +367,16 @@ const AgentList = () => {
                         <Input placeholder="请输入探针名称"/>
                     </Form.Item>
                     <Form.Item
-                        label="平台"
-                        name="platform"
+                        label="标签"
+                        name="tags"
+                        extra="可以从已有标签中选择，或输入新标签后按回车添加"
                     >
-                        <Input placeholder="请输入平台信息，如：阿里云、腾讯云"/>
-                    </Form.Item>
-                    <Form.Item
-                        label="位置"
-                        name="location"
-                    >
-                        <Input placeholder="请输入位置信息，如：北京、香港"/>
+                        <Select
+                            mode="tags"
+                            placeholder="请选择或输入标签"
+                            options={existingTags?.map(tag => ({ label: tag, value: tag }))}
+                            tokenSeparators={[',']}
+                        />
                     </Form.Item>
                     <Form.Item
                         label="到期时间"
