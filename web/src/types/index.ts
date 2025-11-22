@@ -253,6 +253,7 @@ export interface MonitorTask {
     tcpConfig?: MonitorTcpConfig | null;
     icmpConfig?: MonitorIcmpConfig | null;
     agentIds?: string[];
+    tags?: string[];       // 标签列表，拥有这些标签的探针都会执行此监控
     createdAt: number;
     updatedAt: number;
 }
@@ -270,6 +271,7 @@ export interface MonitorTaskRequest {
     tcpConfig?: MonitorTcpConfig | null;
     icmpConfig?: MonitorIcmpConfig | null;
     agentIds?: string[];
+    tags?: string[];       // 标签列表
 }
 
 export interface MonitorListResponse {

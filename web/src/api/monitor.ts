@@ -3,11 +3,13 @@ import type {MonitorListResponse, MonitorTask, MonitorTaskRequest, MonitorStats,
 
 export const listMonitors = (page: number = 1, pageSize: number = 10, keyword?: string) => {
     const params = new URLSearchParams();
-    params.append('page', page.toString());
+    params.append('pageIndex', page.toString());
     params.append('pageSize', pageSize.toString());
     if (keyword) {
         params.append('keyword', keyword);
     }
+    params.set('sortOrder', 'asc');
+    params.set('sortField', 'name');
     return get<MonitorListResponse>(`/admin/monitors?${params.toString()}`);
 };
 

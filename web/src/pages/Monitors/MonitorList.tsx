@@ -5,7 +5,7 @@ import {App, Button, Divider, Form, Input, InputNumber, Modal, Select, Space, Sw
 import {PageHeader} from '../../components';
 import {Edit, MinusCircle, Plus, PlusCircle, RefreshCw, Trash2} from 'lucide-react';
 import dayjs from 'dayjs';
-import {getAgentPaging} from '../../api/agent';
+import {getAgentPaging, getTags} from '../../api/agent';
 import type {Agent, MonitorTask, MonitorTaskRequest} from '../../types';
 import {createMonitor, deleteMonitor, listMonitors, updateMonitor} from '../../api/monitor';
 import {getErrorMessage} from '../../lib/utils';
@@ -23,6 +23,7 @@ const MonitorList = () => {
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loadingAgents, setLoadingAgents] = useState(false);
     const [keyword, setKeyword] = useState('');
+    const [existingTags, setExistingTags] = useState<string[]>([]);
 
     const loadAgents = useCallback(async () => {
         try {
@@ -39,6 +40,19 @@ const MonitorList = () => {
     useEffect(() => {
         void loadAgents();
     }, [loadAgents]);
+
+    // 加载已有的标签
+    useEffect(() => {
+        const loadTags = async () => {
+            try {
+                const response = await getTags();
+                setExistingTags(response.data.tags || []);
+            } catch (error) {
+                console.error('加载标签失败:', error);
+            }
+        };
+        void loadTags();
+    }, []);
 
     const agentOptions = useMemo(
         () =>
@@ -63,6 +77,7 @@ const MonitorList = () => {
             visibility: 'public',
             interval: 60,
             agentIds: [],
+            tags: [],
             httpMethod: 'GET',
             httpTimeout: 60,
             httpExpectedStatusCode: 200,
@@ -93,6 +108,7 @@ const MonitorList = () => {
             visibility: monitor.visibility || 'public',
             interval: monitor.interval || 60,
             agentIds: monitor.agentIds || [],
+            tags: monitor.tags || [],
             httpMethod: monitor.httpConfig?.method || 'GET',
             httpTimeout: monitor.httpConfig?.timeout || 60,
             httpExpectedStatusCode: monitor.httpConfig?.expectedStatusCode || 200,
@@ -138,6 +154,7 @@ const MonitorList = () => {
                 visibility: values.visibility || 'public',
                 interval: values.interval || 60,
                 agentIds: values.agentIds || [],
+                tags: values.tags || [],
             };
 
             if (values.type === 'tcp') {
@@ -230,15 +247,32 @@ const MonitorList = () => {
             title: '探针范围',
             dataIndex: 'agentIds',
             render: (_, record) => {
-                if (!record.agentIds || record.agentIds.length === 0) {
+                const hasAgents = record.agentIds && record.agentIds.length > 0;
+                const hasTags = record.tags && record.tags.length > 0;
+
+                if (!hasAgents && !hasTags) {
                     return <Tag color="purple">全部节点</Tag>;
                 }
+
                 return (
-                    <Space wrap size={4}>
-                        {record.agentIds.map((id) => (
-                            <Tag key={id}>{id}</Tag>
-                        ))}
-                    </Space>
+                    <div className="flex flex-col gap-2">
+                        {hasAgents && (
+                            <Space wrap size={4}>
+                                <span className="text-xs text-gray-500">探针:</span>
+                                {record.agentIds.map((id) => (
+                                    <Tag key={id} color="blue">{id}</Tag>
+                                ))}
+                            </Space>
+                        )}
+                        {hasTags && (
+                            <Space wrap size={4}>
+                                <span className="text-xs text-gray-500">标签:</span>
+                                {record.tags.map((tag) => (
+                                    <Tag key={tag} color="green">{tag}</Tag>
+                                ))}
+                            </Space>
+                        )}
+                    </div>
                 );
             },
         },
@@ -372,7 +406,7 @@ const MonitorList = () => {
                 onOk={handleModalOk}
                 confirmLoading={submitting}
                 width={720}
-                destroyOnClose
+                destroyOnHidden={true}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -415,12 +449,25 @@ const MonitorList = () => {
                         }/>
                     </Form.Item>
 
-                    <Form.Item label="探针范围" name="agentIds" extra="不选择表示所有探针节点都会执行此监控">
+                    <Form.Item label="探针范围" name="agentIds" extra="选择特定探针节点执行此监控">
                         <Select
                             mode="multiple"
                             placeholder="选择探针节点（可多选）"
                             options={agentOptions}
                             loading={loadingAgents}
+                            allowClear
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="探针标签"
+                        name="tags"
+                        extra="选择标签后，拥有这些标签的探针都会执行此监控。若同时选择探针和标签，则两者取并集（自动去重）。若都不选择，则所有探针都会执行"
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="选择标签（可多选）"
+                            options={existingTags.map(tag => ({label: tag, value: tag}))}
                             allowClear
                         />
                     </Form.Item>

@@ -51,7 +51,9 @@ type MonitorTaskRequest struct {
 	Interval         int                        `json:"interval"`                   // 检测频率（秒）
 	HTTPConfig       protocol.HTTPMonitorConfig `json:"httpConfig,omitempty"`
 	TCPConfig        protocol.TCPMonitorConfig  `json:"tcpConfig,omitempty"`
+	ICMPConfig       protocol.ICMPMonitorConfig `json:"icmpConfig,omitempty"`
 	AgentIds         []string                   `json:"agentIds,omitempty"`
+	Tags             []string                   `json:"tags"`
 }
 
 // PublicMonitorOverview 用于公开展示的监控配置及汇总数据
@@ -100,8 +102,10 @@ func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequ
 		Visibility:       visibility,
 		Interval:         interval,
 		AgentIds:         datatypes.JSONSlice[string](req.AgentIds),
+		Tags:             datatypes.JSONSlice[string](req.Tags),
 		HTTPConfig:       datatypes.NewJSONType(req.HTTPConfig),
 		TCPConfig:        datatypes.NewJSONType(req.TCPConfig),
+		ICMPConfig:       datatypes.NewJSONType(req.ICMPConfig),
 		CreatedAt:        0,
 		UpdatedAt:        0,
 	}
@@ -126,6 +130,7 @@ func (s *MonitorService) UpdateMonitor(ctx context.Context, id string, req *Moni
 	task.Description = req.Description
 	task.ShowTargetPublic = req.ShowTargetPublic
 	task.Visibility = req.Visibility
+	task.Tags = req.Tags
 
 	// 更新检测频率
 	interval := req.Interval
@@ -137,6 +142,7 @@ func (s *MonitorService) UpdateMonitor(ctx context.Context, id string, req *Moni
 	task.AgentIds = req.AgentIds
 	task.HTTPConfig = datatypes.NewJSONType(req.HTTPConfig)
 	task.TCPConfig = datatypes.NewJSONType(req.TCPConfig)
+	task.ICMPConfig = datatypes.NewJSONType(req.ICMPConfig)
 
 	if err := s.MonitorRepo.Save(ctx, &task); err != nil {
 		return nil, err
@@ -321,6 +327,57 @@ func cloneAgentIDs(ids datatypes.JSONSlice[string]) []string {
 	return copied
 }
 
+// resolveTargetAgents 计算监控任务对应的目标探针范围
+// 规则：
+// 1. 如果既没有指定 AgentIds 也没有指定 Tags，返回所有传入的探针（全部节点）
+// 2. 如果指定了 AgentIds 或 Tags（或两者都指定），则返回匹配的探针（自动去重）
+//   - AgentIds: 直接匹配探针 ID
+//   - Tags: 匹配探针标签中包含任意一个指定标签的探针
+//   - 两者结果取并集
+func (s *MonitorService) resolveTargetAgents(monitor models.MonitorTask, availableAgents []models.Agent) []models.Agent {
+	// 如果既没有指定 AgentIds 也没有指定 Tags，使用所有可用探针
+	if len(monitor.AgentIds) == 0 && len(monitor.Tags) == 0 {
+		return availableAgents
+	}
+
+	// 使用 map 来去重
+	targetAgentIDSet := make(map[string]struct{})
+
+	// 1. 处理通过 AgentIds 指定的探针
+	if len(monitor.AgentIds) > 0 {
+		for _, agentID := range monitor.AgentIds {
+			targetAgentIDSet[agentID] = struct{}{}
+		}
+	}
+
+	// 2. 处理通过 Tags 指定的探针
+	if len(monitor.Tags) > 0 {
+		for _, agent := range availableAgents {
+			if agent.Tags != nil && len(agent.Tags) > 0 {
+				// 检查探针的标签中是否包含任何一个指定的标签
+				for _, agentTag := range agent.Tags {
+					for _, monitorTag := range monitor.Tags {
+						if agentTag == monitorTag {
+							targetAgentIDSet[agent.ID] = struct{}{}
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 3. 根据去重后的 ID 集合筛选探针
+	targetAgents := make([]models.Agent, 0, len(targetAgentIDSet))
+	for _, agent := range availableAgents {
+		if _, ok := targetAgentIDSet[agent.ID]; ok {
+			targetAgents = append(targetAgents, agent)
+		}
+	}
+
+	return targetAgents
+}
+
 // BroadcastMonitorConfig 向所有在线探针广播监控配置
 func (s *MonitorService) BroadcastMonitorConfig(ctx context.Context) error {
 	// 获取所有启用的监控任务
@@ -348,26 +405,11 @@ func (s *MonitorService) BroadcastMonitorConfig(ctx context.Context) error {
 	agentMonitors := make(map[string][]models.MonitorTask)
 
 	for _, monitor := range monitors {
-		// 如果没有指定探针，则发送给所有探针
-		if len(monitor.AgentIds) == 0 {
-			for _, agent := range agents {
-				agentMonitors[agent.ID] = append(agentMonitors[agent.ID], monitor)
-			}
-		} else {
-			// 只发送给指定的探针（只发送给在线的探针）
-			for _, agentID := range monitor.AgentIds {
-				// 检查该探针是否在线
-				isOnline := false
-				for _, agent := range agents {
-					if agent.ID == agentID {
-						isOnline = true
-						break
-					}
-				}
-				if isOnline {
-					agentMonitors[agentID] = append(agentMonitors[agentID], monitor)
-				}
-			}
+		// 使用统一的方法计算目标探针
+		targetAgents := s.resolveTargetAgents(monitor, agents)
+
+		for _, agent := range targetAgents {
+			agentMonitors[agent.ID] = append(agentMonitors[agent.ID], monitor)
 		}
 	}
 
@@ -390,6 +432,11 @@ func (s *MonitorService) BroadcastMonitorConfig(ctx context.Context) error {
 				var tcpConfig protocol.TCPMonitorConfig
 				if err := task.TCPConfig.Scan(&tcpConfig); err == nil {
 					item.TCPConfig = &tcpConfig
+				}
+			} else if task.Type == "icmp" || task.Type == "ping" {
+				var icmpConfig protocol.ICMPMonitorConfig
+				if err := task.ICMPConfig.Scan(&icmpConfig); err == nil {
+					item.ICMPConfig = &icmpConfig
 				}
 			}
 
@@ -446,34 +493,18 @@ func (s *MonitorService) SendMonitorTaskToAgents(ctx context.Context, monitor mo
 		return nil
 	}
 
-	onlineSet := make(map[string]struct{}, len(onlineIDs))
-	for _, id := range onlineIDs {
-		onlineSet[id] = struct{}{}
+	// 查询在线探针的详细信息
+	onlineAgents, err := s.agentRepo.ListByIDs(ctx, onlineIDs)
+	if err != nil {
+		s.logger.Error("获取在线探针信息失败", zap.Error(err))
+		return err
 	}
-
-	// 确定要发送的探针ID列表
-	targetAgentIDs := make([]string, 0)
-	if len(agentIDs) == 0 {
-		// 发送给所有当前在线的探针
-		targetAgentIDs = append(targetAgentIDs, onlineIDs...)
-	} else {
-		// 只发送给指定且当前在线的探针
-		for _, id := range agentIDs {
-			if _, ok := onlineSet[id]; ok {
-				targetAgentIDs = append(targetAgentIDs, id)
-			}
-		}
-	}
-
-	if len(targetAgentIDs) == 0 {
+	if len(onlineAgents) == 0 {
 		return nil
 	}
 
-	// 查询探针基础信息（用于保持原有逻辑的一致性）
-	targetAgents, err := s.agentRepo.ListByIDs(ctx, targetAgentIDs)
-	if err != nil {
-		return err
-	}
+	// 使用统一的方法计算目标探针
+	targetAgents := s.resolveTargetAgents(monitor, onlineAgents)
 	if len(targetAgents) == 0 {
 		return nil
 	}
@@ -494,6 +525,11 @@ func (s *MonitorService) SendMonitorTaskToAgents(ctx context.Context, monitor mo
 		var tcpConfig protocol.TCPMonitorConfig
 		if err := monitor.TCPConfig.Scan(&tcpConfig); err == nil {
 			item.TCPConfig = &tcpConfig
+		}
+	} else if monitor.Type == "icmp" || monitor.Type == "ping" {
+		var icmpConfig protocol.ICMPMonitorConfig
+		if err := monitor.ICMPConfig.Scan(&icmpConfig); err == nil {
+			item.ICMPConfig = &icmpConfig
 		}
 	}
 
@@ -537,19 +573,8 @@ func (s *MonitorService) CalculateMonitorStats(ctx context.Context) error {
 
 	// 为每个监控任务的每个探针计算统计数据
 	for _, monitor := range monitors {
-		var targetAgents []models.Agent
-		if len(monitor.AgentIds) == 0 {
-			targetAgents = agents
-		} else {
-			for _, agent := range agents {
-				for _, agentID := range monitor.AgentIds {
-					if agent.ID == agentID {
-						targetAgents = append(targetAgents, agent)
-						break
-					}
-				}
-			}
-		}
+		// 使用统一的方法计算目标探针
+		targetAgents := s.resolveTargetAgents(monitor, agents)
 
 		for _, agent := range targetAgents {
 			stats, err := s.calculateStatsForAgentMonitor(ctx, agent.ID, monitor.ID, monitor.Type, monitor.Target, now)
