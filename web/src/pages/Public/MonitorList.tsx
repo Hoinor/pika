@@ -6,8 +6,6 @@ import {getPublicMonitors} from '../../api/monitor';
 import type {PublicMonitor} from '../../types';
 import {usePublicLayout} from '../PublicLayout';
 
-type ViewMode = 'grid' | 'list';
-
 const formatTime = (ms: number): string => {
     if (!ms || ms <= 0) return '0 ms';
     if (ms < 1000) return `${ms.toFixed(0)} ms`;
@@ -132,7 +130,7 @@ const MonitorList = () => {
                                     <StatusBadge status={stats.lastCheckStatus}/>
                                 </div>
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 truncate" title={stats.showTargetPublic ? stats.target : '已隐藏'}>
-                                    {stats.showTargetPublic ? stats.target : '***'}
+                                    {stats.target}
                                 </p>
                                 {stats.agentCount > 1 && (
                                     <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
@@ -281,7 +279,7 @@ const MonitorList = () => {
                                             {stats.name}
                                         </div>
                                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 break-all">
-                                            {stats.showTargetPublic ? stats.target : '***'}
+                                            {stats.target}
                                         </div>
                                         {stats.agentCount > 1 && (
                                             <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
