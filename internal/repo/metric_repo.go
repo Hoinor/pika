@@ -941,7 +941,7 @@ func (r *MetricRepo) GetCPUMetricsAgg(ctx context.Context, agentID string, start
 	err := r.db.WithContext(ctx).
 		Table("cpu_metrics_aggs").
 		Select("bucket_start as timestamp, max_usage, logical_cores").
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start").
 		Scan(&metrics).Error
 	return metrics, err
@@ -953,20 +953,20 @@ func (r *MetricRepo) GetMemoryMetricsAgg(ctx context.Context, agentID string, st
 	err := r.db.WithContext(ctx).
 		Table("memory_metrics_aggs").
 		Select("bucket_start as timestamp, max_usage, total").
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start").
 		Scan(&metrics).Error
 	return metrics, err
 }
 
 // GetDiskMetricsAgg 从聚合表获取磁盘指标（返回预聚合的总和数据）
-// 直接查询 mount_point=” 的预聚合记录
+// 直接查询 mount_point=" 的预聚合记录
 func (r *MetricRepo) GetDiskMetricsAgg(ctx context.Context, agentID string, start, end int64, bucketSeconds int) ([]AggregatedDiskMetric, error) {
 	var metrics []AggregatedDiskMetric
 	err := r.db.WithContext(ctx).
 		Table("disk_metrics_aggs").
 		Select("bucket_start as timestamp, mount_point, max_usage, total").
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ? AND mount_point = ?",
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ? AND mount_point = ?",
 			agentID, bucketSeconds, start, end, ""). // 空字符串查询总和记录
 		Order("bucket_start").
 		Scan(&metrics).Error
@@ -974,7 +974,7 @@ func (r *MetricRepo) GetDiskMetricsAgg(ctx context.Context, agentID string, star
 }
 
 // GetNetworkMetricsAgg 从聚合表获取网络指标（可选按网卡接口过滤）
-// 不指定网卡时查询 interface=” 的预聚合数据，指定网卡时只返回该网卡的数据
+// 不指定网卡时查询 interface=" 的预聚合数据，指定网卡时只返回该网卡的数据
 func (r *MetricRepo) GetNetworkMetricsAgg(ctx context.Context, agentID string, start, end int64, bucketSeconds int, interfaceName string) ([]AggregatedNetworkMetric, error) {
 	var metrics []AggregatedNetworkMetric
 
@@ -983,7 +983,7 @@ func (r *MetricRepo) GetNetworkMetricsAgg(ctx context.Context, agentID string, s
 	err := r.db.WithContext(ctx).
 		Table("network_metrics_aggs").
 		Select("bucket_start as timestamp, interface, max_sent_rate, max_recv_rate").
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ? AND interface = ?",
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ? AND interface = ?",
 			agentID, bucketSeconds, start, end, interfaceName).
 		Order("bucket_start").
 		Scan(&metrics).Error
@@ -1012,7 +1012,7 @@ func (r *MetricRepo) GetNetworkConnectionMetricsAgg(ctx context.Context, agentID
 			max_fin_wait1, max_fin_wait2, max_time_wait,
 			max_close, max_close_wait, max_last_ack,
 			max_listen, max_closing, max_total`).
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start").
 		Scan(&metrics).Error
 	return metrics, err
@@ -1027,7 +1027,7 @@ func (r *MetricRepo) GetDiskIOMetricsAgg(ctx context.Context, agentID string, st
 			max_read_bytes_rate as max_read_rate,
 			max_write_bytes_rate as max_write_rate,
 			max_iops_in_progress`).
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start").
 		Scan(&metrics).Error
 	return metrics, err
@@ -1044,7 +1044,7 @@ func (r *MetricRepo) GetGPUMetricsAgg(ctx context.Context, agentID string, start
 			max_temperature,
 			max_power_draw,
 			memory_total`).
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start, index").
 		Scan(&metrics).Error
 	return metrics, err
@@ -1057,7 +1057,7 @@ func (r *MetricRepo) GetTemperatureMetricsAgg(ctx context.Context, agentID strin
 		Table("temperature_metrics_aggs").
 		Select(`bucket_start as timestamp, sensor_key, sensor_label,
 			max_temperature`).
-		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start < ?", agentID, bucketSeconds, start, end).
+		Where("agent_id = ? AND bucket_seconds = ? AND bucket_start >= ? AND bucket_start <= ?", agentID, bucketSeconds, start, end).
 		Order("bucket_start, sensor_key").
 		Scan(&metrics).Error
 	return metrics, err

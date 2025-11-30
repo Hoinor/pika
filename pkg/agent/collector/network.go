@@ -22,14 +22,6 @@ func safeDelta(current, previous uint64) uint64 {
 	return 0
 }
 
-// calcRate 根据增量和采样间隔计算每秒速率
-func calcRate(delta uint64, intervalSeconds float64) uint64 {
-	if intervalSeconds <= 0 || delta == 0 {
-		return 0
-	}
-	return uint64(float64(delta) / intervalSeconds)
-}
-
 // NewNetworkCollector 创建网络采集器
 func NewNetworkCollector(cfg *config.Config) *NetworkCollector {
 	return &NetworkCollector{
@@ -55,7 +47,7 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 	}
 
 	// 创建接口信息映射(使用第二次采集的接口信息)
-	interfaceMap := make(map[string]*protocol.NetworkData)
+	interfaceMap := make(map[string]protocol.NetworkData)
 	for _, iface := range secondInterfaces {
 		// 使用配置中的排除规则过滤网卡
 		if n.config.ShouldExcludeNetworkInterface(iface.Name) {
@@ -68,7 +60,7 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 			addrs = append(addrs, addr.Addr)
 		}
 
-		interfaceMap[iface.Name] = &protocol.NetworkData{
+		interfaceMap[iface.Name] = protocol.NetworkData{
 			Interface:  iface.Name,
 			MacAddress: iface.HardwareAddr,
 			Addrs:      addrs,
@@ -90,9 +82,9 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 		}
 
 		// 如果已有接口信息,则更新;否则创建新的
-		netData := interfaceMap[counter.Name]
-		if netData == nil {
-			netData = &protocol.NetworkData{
+		netData, ok := interfaceMap[counter.Name]
+		if !ok {
+			netData = protocol.NetworkData{
 				Interface: counter.Name,
 			}
 		}
@@ -114,7 +106,7 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 			netData.BytesRecvRate = 0
 		}
 
-		networkDataList = append(networkDataList, *netData)
+		networkDataList = append(networkDataList, netData)
 	}
 
 	return networkDataList, nil

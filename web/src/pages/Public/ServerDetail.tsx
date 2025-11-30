@@ -29,6 +29,7 @@ import {
     getAgent,
     getAgentLatestMetrics,
     getAgentMetrics,
+    getAvailableNetworkInterfaces,
     type GetAgentMetricsRequest,
 } from '@/api/agent.ts';
 import type {
@@ -516,14 +517,37 @@ const ServerDetail = () => {
         [metricsData.memory]
     );
 
-    // 获取所有可用的网卡列表（从 metricsData.network 中获取）
-    const availableInterfaces = useMemo(() => {
-        const interfaces = new Set<string>();
-        metricsData.network.forEach((item) => {
-            interfaces.add(item.interface);
-        });
-        return Array.from(interfaces).sort();
-    }, [metricsData.network]);
+    // 获取所有可用的网卡列表（从后端接口获取）
+    const [availableInterfaces, setAvailableInterfaces] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (!id) {
+            setAvailableInterfaces([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const fetchInterfaces = async () => {
+            try {
+                const response = await getAvailableNetworkInterfaces(id);
+                if (!cancelled) {
+                    setAvailableInterfaces(response.data.interfaces || []);
+                }
+            } catch (error) {
+                console.error('Failed to load network interfaces:', error);
+                if (!cancelled) {
+                    setAvailableInterfaces([]);
+                }
+            }
+        };
+
+        fetchInterfaces();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
 
     useEffect(() => {
         if (selectedInterface === 'all') {
