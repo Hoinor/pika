@@ -1,9 +1,9 @@
 import {useEffect, useState} from 'react';
-import {Alert, App, Form, Input, Modal, Select, Switch} from 'antd';
+import {App, Form, Input, Modal, Select, Switch} from 'antd';
 import {createDDNSConfig, updateDDNSConfig} from '@/api/ddns';
 import {getDNSProviders} from '@/api/dnsProvider';
-import type {CreateDDNSConfigRequest, UpdateDDNSConfigRequest, DDNSConfig, DNSProviderConfig} from '@/types/ddns';
-import {getAgents} from '@/api/agent';
+import type {CreateDDNSConfigRequest, DDNSConfig, DNSProviderConfig, UpdateDDNSConfigRequest} from '@/types/ddns';
+import {getAgentPaging} from '@/api/agent';
 import type {Agent} from '@/types';
 
 interface DDNSModalProps {
@@ -73,8 +73,8 @@ const DDNSModal = ({open, id, config, onCancel, onSuccess}: DDNSModalProps) => {
 
     const loadAgents = async () => {
         try {
-            const data = await getAgents();
-            setAgents(data.items || []);
+            const data = await getAgentPaging(1, 1000);
+            setAgents(data.data.items || []);
         } catch (error) {
             messageApi.error('加载探针列表失败');
         }

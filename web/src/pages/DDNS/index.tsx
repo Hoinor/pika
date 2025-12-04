@@ -1,20 +1,12 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useRef, useState} from 'react';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Divider, Form, Input, Modal, Select, Space, Switch, Tag, Tooltip} from 'antd';
+import {App, Button, Divider, Input, Space, Tag, Tooltip} from 'antd';
 import {PageHeader} from '@/components';
-import {Globe, Plus, RefreshCw, Settings} from 'lucide-react';
+import {Globe, Plus, Settings} from 'lucide-react';
 import dayjs from 'dayjs';
-import {getAgents} from '@/api/agent';
-import type {Agent, DDNSConfig} from '@/types';
-import {
-    createDDNSConfig,
-    deleteDDNSConfig,
-    disableDDNSConfig,
-    enableDDNSConfig,
-    getDDNSConfigs,
-    updateDDNSConfig,
-} from '@/api/ddns';
+import type {DDNSConfig} from '@/types';
+import {deleteDDNSConfig, disableDDNSConfig, enableDDNSConfig, getDDNSConfigs,} from '@/api/ddns';
 import {getErrorMessage} from '@/lib/utils';
 import DDNSModal from './components/DDNSModal';
 import RecordsDrawer from './components/RecordsDrawer';
@@ -90,7 +82,7 @@ const DDNSPage = () => {
             dataIndex: 'name',
             render: (_, record) => (
                 <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-blue-500" />
+                    <Globe className="h-4 w-4 text-blue-500"/>
                     <span className="font-medium text-gray-900">{record.name}</span>
                 </div>
             ),
@@ -109,8 +101,8 @@ const DDNSPage = () => {
             width: 250,
             render: (_, record) => {
                 const allDomains = [
-                    ...((record.domainsIpv4 || []).map(d => ({ domain: d, type: 'IPv4' }))),
-                    ...((record.domainsIpv6 || []).map(d => ({ domain: d, type: 'IPv6' })))
+                    ...((record.domainsIpv4 || []).map(d => ({domain: d, type: 'IPv4'}))),
+                    ...((record.domainsIpv6 || []).map(d => ({domain: d, type: 'IPv6'})))
                 ];
                 return (
                     <div className="flex flex-wrap gap-1">
@@ -120,7 +112,8 @@ const DDNSPage = () => {
                             </Tag>
                         ))}
                         {allDomains.length > 2 && (
-                            <Tooltip title={allDomains.slice(2).map(item => `${item.domain} (${item.type})`).join(', ')}>
+                            <Tooltip
+                                title={allDomains.slice(2).map(item => `${item.domain} (${item.type})`).join(', ')}>
                                 <Tag>+{allDomains.length - 2}</Tag>
                             </Tooltip>
                         )}
@@ -207,14 +200,14 @@ const DDNSPage = () => {
                     {
                         key: 'provider',
                         label: 'DNS Provider',
-                        icon: <Settings size={16} />,
+                        icon: <Settings size={16}/>,
                         type: 'primary',
                         onClick: () => setProviderModalOpen(true),
                     },
                 ]}
             />
 
-            <Divider />
+            <Divider/>
 
             <ProTable<DDNSConfig>
                 columns={columns}
@@ -237,7 +230,7 @@ const DDNSPage = () => {
                         }}
                         style={{width: 260}}
                     />,
-                    <Button key="add" type="primary" icon={<Plus size={16} />} onClick={handleCreate}>
+                    <Button key="add" type="primary" icon={<Plus size={16}/>} onClick={handleCreate}>
                         新建配置
                     </Button>,
                 ]}

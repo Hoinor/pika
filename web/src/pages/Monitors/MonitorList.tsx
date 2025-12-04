@@ -28,7 +28,7 @@ const MonitorList = () => {
     const loadAgents = useCallback(async () => {
         try {
             setLoadingAgents(true);
-            const response = await getAgentPaging(1, 500);
+            const response = await getAgentPaging(1, 1000);
             setAgents(response.data.items || []);
         } catch (error: unknown) {
             message.error(getErrorMessage(error, '获取探针列表失败'));

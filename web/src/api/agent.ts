@@ -46,12 +46,6 @@ export const listAgents = () => {
     return get<ListAgentsResponse>('/agents');
 };
 
-// 获取所有探针（不分页，用于选择器）
-export const getAgents = async () => {
-    const response = await get<ListAgentsResponse>('/admin/agents');
-    return response.data;
-};
-
 export const getAgent = (id: string) => {
     return get<Agent>(`/agents/${id}`);
 };
