@@ -123,7 +123,7 @@ const MonitorList = () => {
                                 navigate(`/monitors/${encodeURIComponent(stats.id)}`);
                             }
                         }}
-                        className="group relative flex h-full cursor-pointer flex-col gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-blue-300 dark:hover:border-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+                        className="group relative flex h-full cursor-pointer flex-col gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-blue-300 dark:hover:border-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">

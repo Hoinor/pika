@@ -189,7 +189,7 @@ const ServerList = () => {
                         tabIndex={0}
                         to={`/servers/${agent.id}`}
                         className={cn(
-                            "group relative flex h-full cursor-pointer flex-col gap-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-blue-300 dark:hover:border-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200",
+                            "group relative flex h-full cursor-pointer flex-col gap-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-blue-300 dark:hover:border-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200",
                             agent.status !== 1 && "filter grayscale"
                         )}
                     >
@@ -211,7 +211,7 @@ const ServerList = () => {
                                         </span>
                                     </div>
                                     <span
-                                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-sky-200">
+                                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-200">
                                         {agent.os} · {agent.arch}
                                     </span>
                                 </div>
@@ -220,7 +220,7 @@ const ServerList = () => {
                                         agent.tags?.map((tag, index) => (
                                             <span
                                                 key={index}
-                                                className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-sky-500/10 px-2 py-0.5 text-blue-700 dark:text-sky-200">
+                                                className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-200">
                                                 {tag}
                                             </span>
                                         ))
@@ -242,7 +242,7 @@ const ServerList = () => {
                                     className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/60 p-3">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-sky-900/40 text-blue-600 dark:text-sky-200">
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-200">
                                             <Cpu className="h-3.5 w-3.5"/>
                                         </div>
                                         <span className="text-xs font-medium text-slate-600 dark:text-slate-200">CPU</span>
@@ -257,7 +257,7 @@ const ServerList = () => {
                                     className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/60 p-3">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-sky-900/40 text-blue-600 dark:text-sky-200">
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-200">
                                             <MemoryStick className="h-3.5 w-3.5"/>
                                         </div>
                                         <span className="text-xs font-medium text-slate-600 dark:text-slate-200">内存</span>
@@ -272,7 +272,7 @@ const ServerList = () => {
                                     className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/60 p-3">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-sky-900/40 text-blue-600 dark:text-sky-200">
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-200">
                                             <HardDrive className="h-3.5 w-3.5"/>
                                         </div>
                                         <span className="text-xs font-medium text-slate-600 dark:text-slate-200">磁盘</span>
@@ -289,7 +289,7 @@ const ServerList = () => {
                                     className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-3 py-2.5">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-sky-900/40 text-blue-600 dark:text-sky-200">
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-200">
                                             <Network className="h-3.5 w-3.5"/>
                                         </div>
                                         <span className="text-xs font-medium text-slate-600 dark:text-slate-200">实时速率</span>
@@ -309,7 +309,7 @@ const ServerList = () => {
                                     className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-3 py-2.5">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-sky-900/40 text-blue-600 dark:text-sky-200">
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-200">
                                             <EthernetPortIcon className="h-3.5 w-3.5"/>
                                         </div>
                                         <span className="text-xs font-medium text-slate-600 dark:text-slate-200">累计流量</span>
@@ -339,7 +339,7 @@ const ServerList = () => {
             <div className="hidden overflow-hidden rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 lg:block">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                     <thead className="bg-blue-50 dark:bg-slate-900/70">
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-sky-200">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-200">
                         <th className="px-5 py-3">服务器</th>
                         <th className="px-5 py-3">系统</th>
                         <th className="px-5 py-3">CPU</th>
@@ -380,7 +380,7 @@ const ServerList = () => {
                                     }
                                 }}
                                 className={cn(
-                                    "cursor-pointer transition hover:bg-blue-50 dark:hover:bg-slate-900/70 focus-within:bg-blue-50 dark:focus-within:bg-slate-900/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-200",
+                                    "cursor-pointer transition hover:bg-blue-50 dark:hover:bg-slate-900/70 focus-within:bg-blue-50 dark:focus-within:bg-slate-900/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200",
                                     agent.status !== 1 && "filter grayscale"
                                 )}
                             >
@@ -404,7 +404,7 @@ const ServerList = () => {
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                             {agent.tags && agent.tags.length > 0 && (
                                                 agent.tags?.map((tag, index) => (
-                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700 dark:text-sky-200">
+                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-200">
                                                         {tag}
                                                     </span>
                                                 ))
@@ -509,7 +509,7 @@ const ServerList = () => {
                         className={cn(
                             "cursor-pointer inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
                             selectedTag === ''
-                                ? 'bg-blue-500 dark:bg-sky-500 text-white shadow-md shadow-blue-500/30 dark:shadow-sky-500/30'
+                                ? 'bg-blue-500 dark:bg-blue-500 text-white shadow-md shadow-blue-500/30 dark:shadow-blue-500/30'
                                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                         )}
                     >
@@ -517,7 +517,7 @@ const ServerList = () => {
                         <span className={cn(
                             "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold",
                             selectedTag === ''
-                                ? 'bg-blue-400 dark:bg-sky-400 text-white'
+                                ? 'bg-blue-400 dark:bg-blue-400 text-white'
                                 : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                         )}>
                             {agents.length}
@@ -534,7 +534,7 @@ const ServerList = () => {
                                 className={cn(
                                     "cursor-pointer inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
                                     selectedTag === tag
-                                        ? 'bg-blue-500 dark:bg-sky-500 text-white shadow-md shadow-blue-500/30 dark:shadow-sky-500/30'
+                                        ? 'bg-blue-500 dark:bg-blue-500 text-white shadow-md shadow-blue-500/30 dark:shadow-blue-500/30'
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                                 )}
                             >
@@ -542,7 +542,7 @@ const ServerList = () => {
                                 <span className={cn(
                                     "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold",
                                     selectedTag === tag
-                                        ? 'bg-blue-400 dark:bg-sky-400 text-white'
+                                        ? 'bg-blue-400 dark:bg-blue-400 text-white'
                                         : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                                 )}>
                                     {count}

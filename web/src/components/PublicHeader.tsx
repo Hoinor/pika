@@ -135,7 +135,7 @@ const PublicHeader = ({
                                 }}
                             />
                             <div className="hidden md:block">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-sky-300">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-blue-300">
                                     {window.SystemConfig?.SystemNameEn}
                                 </p>
                                 <h1 className="text-sm font-bold text-slate-900 dark:text-slate-50">
@@ -150,7 +150,7 @@ const PublicHeader = ({
                                 <div
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium transition-all ${
                                         isDeviceActive
-                                            ? 'bg-blue-50 dark:bg-sky-500/15 text-blue-600 dark:text-sky-200'
+                                            ? 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-200'
                                             : 'text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-50'
                                     }`}
                                 >
@@ -162,7 +162,7 @@ const PublicHeader = ({
                                 <div
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium transition-all ${
                                         isMonitorActive
-                                            ? 'bg-blue-50 dark:bg-sky-500/15 text-blue-600 dark:text-sky-200'
+                                            ? 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-200'
                                             : 'text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-50'
                                     }`}>
                                     <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4"/>
@@ -198,7 +198,7 @@ const PublicHeader = ({
                                     onClick={() => onViewModeChange('grid')}
                                     className={`inline-flex items-center rounded-md p-1.5 transition-all cursor-pointer ${
                                         viewMode === 'grid'
-                                            ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-sky-200 shadow-sm dark:shadow-slate-900/60'
+                                            ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-200 shadow-sm dark:shadow-slate-900/60'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                                     }`}
                                     title="网格视图"
@@ -210,7 +210,7 @@ const PublicHeader = ({
                                     onClick={() => onViewModeChange('list')}
                                     className={`inline-flex items-center rounded-md p-1.5 transition-all cursor-pointer ${
                                         viewMode === 'list'
-                                            ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-sky-200 shadow-sm dark:shadow-slate-900/60'
+                                            ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-200 shadow-sm dark:shadow-slate-900/60'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                                     }`}
                                     title="列表视图"
@@ -224,7 +224,8 @@ const PublicHeader = ({
                         {isLoggedIn ? (
                             <a
                                 href="/admin"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium text-white hover:bg-blue-700 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-all"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:text-slate-950 dark:hover:bg-blue-400 transition-all"
+                                target="_blank"
                             >
                                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4"/>
                                 <span className="sm:inline">管理后台</span>
@@ -232,7 +233,8 @@ const PublicHeader = ({
                         ) : (
                             <a
                                 href="/login"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium text-white hover:bg-blue-700 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-all"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:text-slate-950 dark:hover:bg-blue-400 transition-all"
+                                target="_blank"
                             >
                                 <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4"/>
                                 <span className="sm:inline">登录</span>
