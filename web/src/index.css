@@ -8,32 +8,58 @@
     scrollbar-width: thin;
 }
 
+/* 全局背景色 */
+body {
+    background-color: white;
+}
+
+body.dark {
+    background-color: #141414;
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgb(241, 245, 249);
+    border-radius: 5px;
+    margin: 2px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgb(209, 213, 219);
-    border-radius: 4px;
+    background: rgb(203, 213, 225);
+    border-radius: 5px;
+    border: 2px solid rgb(241, 245, 249);
+    transition: background-color 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgb(156, 163, 175);
+    background: rgb(148, 163, 184);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: rgb(100, 116, 139);
 }
 
 /* 暗色模式滚动条 */
+.dark ::-webkit-scrollbar-track {
+    background: rgb(30, 41, 59);
+}
+
 .dark ::-webkit-scrollbar-thumb {
     background: rgb(71, 85, 105);
+    border-color: rgb(30, 41, 59);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
     background: rgb(100, 116, 139);
+}
+
+.dark ::-webkit-scrollbar-thumb:active {
+    background: rgb(148, 163, 184);
 }
 
 /* 标签过滤器滚动条样式 */

@@ -220,7 +220,7 @@ const ServerList = () => {
                                         agent.tags?.map((tag, index) => (
                                             <span
                                                 key={index}
-                                                className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-200">
+                                                className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-400">
                                                 {tag}
                                             </span>
                                         ))
@@ -404,7 +404,7 @@ const ServerList = () => {
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                             {agent.tags && agent.tags.length > 0 && (
                                                 agent.tags?.map((tag, index) => (
-                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-200">
+                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
                                                         {tag}
                                                     </span>
                                                 ))

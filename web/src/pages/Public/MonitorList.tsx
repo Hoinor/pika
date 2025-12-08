@@ -133,7 +133,7 @@ const MonitorList = () => {
                                     </h3>
                                     <StatusBadge status={stats.lastCheckStatus}/>
                                 </div>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 truncate" title={stats.showTargetPublic ? stats.target : '已隐藏'}>
+                                <p className="mt-1 text-sm text-blue-700 dark:text-blue-400 truncate" title={stats.showTargetPublic ? stats.target : '已隐藏'}>
                                     {stats.target}
                                 </p>
                                 {stats.agentCount > 1 && (
@@ -286,7 +286,7 @@ const MonitorList = () => {
                                         <div className="font-semibold text-slate-900 dark:text-white">
                                             {stats.name}
                                         </div>
-                                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 break-all">
+                                        <div className="mt-1 text-xs text-blue-700 dark:text-blue-400 break-all">
                                             {stats.target}
                                         </div>
                                         {stats.agentCount > 1 && (
