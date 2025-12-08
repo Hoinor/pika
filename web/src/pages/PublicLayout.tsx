@@ -22,7 +22,7 @@ const getInitialViewMode = (): ViewMode => {
     }
 
     // 桌面端使用配置的默认视图
-    return window.SystemConfig?.DefaultView === 'list' ? 'list' : 'grid';
+    return window.SystemConfig?.DefaultView === 'grid' ? 'grid' : 'list';
 };
 
 const PublicLayout = () => {
