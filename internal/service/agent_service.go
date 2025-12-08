@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/dushixiang/pika/internal/models"
@@ -394,7 +395,13 @@ func (s *AgentService) GetAgentByAuth(ctx context.Context, id string, isAuthenti
 
 // GetAllTags 获取所有探针的标签
 func (s *AgentService) GetAllTags(ctx context.Context) ([]string, error) {
-	return s.AgentRepo.GetAllTags(ctx)
+	tags, err := s.AgentRepo.GetAllTags(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// 排序
+	sort.Strings(tags)
+	return tags, nil
 }
 
 func (s *AgentService) InitStatus(ctx context.Context) error {
