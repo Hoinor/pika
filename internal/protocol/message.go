@@ -289,6 +289,7 @@ type Evidence struct {
 // MonitorData 监控数据
 type MonitorData struct {
 	AgentId      string `json:"agentId"`                // 探针 ID
+	AgentName    string `json:"agentName"`              // 探针名称
 	MonitorId    string `json:"monitorId"`              // 监控项ID
 	Type         string `json:"type"`                   // 监控类型: http, tcp
 	Target       string `json:"target,omitempty"`       // 监控目标

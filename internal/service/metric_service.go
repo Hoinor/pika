@@ -22,6 +22,7 @@ import (
 type MetricService struct {
 	logger          *zap.Logger
 	metricRepo      *repo.MetricRepo
+	agentRepo       *repo.AgentRepo
 	propertyService *PropertyService
 	trafficService  *TrafficService // 流量统计服务
 	vmClient        *vmclient.VMClient
@@ -36,6 +37,7 @@ func NewMetricService(logger *zap.Logger, db *gorm.DB, propertyService *Property
 	return &MetricService{
 		logger:             logger,
 		metricRepo:         repo.NewMetricRepo(db),
+		agentRepo:          repo.NewAgentRepo(db),
 		propertyService:    propertyService,
 		trafficService:     trafficService,
 		vmClient:           vmClient,
@@ -529,6 +531,42 @@ func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string,
 		series = append(series, convertedSeries...)
 	}
 
+	// 收集所有 agent_id
+	agentIdSet := make(map[string]struct{})
+	for _, s := range series {
+		if agentId, ok := s.Labels["agent_id"]; ok {
+			agentIdSet[agentId] = struct{}{}
+		}
+	}
+
+	// 查询 agent 信息
+	if len(agentIdSet) > 0 {
+		agentIds := make([]string, 0, len(agentIdSet))
+		for agentId := range agentIdSet {
+			agentIds = append(agentIds, agentId)
+		}
+
+		agents, err := s.agentRepo.FindByIdIn(ctx, agentIds)
+		if err != nil {
+			s.logger.Error("查询 agent 信息失败", zap.Error(err))
+		} else {
+			// 构建 agentId -> agentName 映射
+			agentNameMap := make(map[string]string)
+			for _, agent := range agents {
+				agentNameMap[agent.ID] = agent.Name
+			}
+
+			// 在每个 series 的 labels 中添加 agent_name
+			for i := range series {
+				if agentId, ok := series[i].Labels["agent_id"]; ok {
+					if agentName, exists := agentNameMap[agentId]; exists {
+						series[i].Labels["agent_name"] = agentName
+					}
+				}
+			}
+		}
+	}
+
 	return &metric.GetMetricsResponse{
 		AgentID: "", // 监控查询不限定单个agent
 		Type:    "monitor",
@@ -546,10 +584,30 @@ func (s *MetricService) GetMonitorAgentStats(monitorID string) []protocol.Monito
 		return []protocol.MonitorData{}
 	}
 
-	// 转换为数组
+	// 收集所有 agentId
+	agentIds := make([]string, 0, len(latestMetrics.Agents))
+	for agentId := range latestMetrics.Agents {
+		agentIds = append(agentIds, agentId)
+	}
+
+	// 查询 agent 信息
+	ctx := context.Background()
+	agents, err := s.agentRepo.FindByIdIn(ctx, agentIds)
+	if err != nil {
+		s.logger.Error("查询 agent 信息失败", zap.Error(err))
+	}
+
+	// 构建 agentId -> agentName 映射
+	agentNameMap := make(map[string]string)
+	for _, agent := range agents {
+		agentNameMap[agent.ID] = agent.Name
+	}
+
+	// 转换为数组并填充 agent 名称
 	result := make([]protocol.MonitorData, 0, len(latestMetrics.Agents))
-	for _, stat := range latestMetrics.Agents {
-		stat.Target = ""
+	for agentId, stat := range latestMetrics.Agents {
+		stat.Target = ""                       // 隐藏目标地址
+		stat.AgentName = agentNameMap[agentId] // 填充 agent 名称
 		result = append(result, *stat)
 	}
 

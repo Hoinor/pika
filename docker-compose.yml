@@ -29,9 +29,9 @@ services:
       - "-storageDataPath=/victoria-metrics-data"
       - "-httpListenAddr=:8428"
     ports:
-      - "8428:8428"  # API, PromQL, insert, select
+      - "127.0.0.1:8428:8428"  # API, PromQL, insert, select
     volumes:
-      - ./vmdata:/victoria-metrics-data
+      - ./data/vmdata:/victoria-metrics-data
     networks:
       - pika-network
   pika:

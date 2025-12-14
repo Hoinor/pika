@@ -311,6 +311,7 @@ export interface PublicMonitor {
 // 探针监控统计
 export interface AgentMonitorStat {
     agentId: string;
+    agentName: string;
     monitorId: string;
     type: string;
     target: string;
