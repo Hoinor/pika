@@ -167,7 +167,7 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                             axisLine={false}
                             tickFormatter={(value) => `${value}ms`}
                         />
-                        <Tooltip content={<CustomTooltip variant={'dark'}/>}/>
+                        <Tooltip content={<CustomTooltip variant={'dark'} unit={'ms'}/>}/>
                         <Legend
                             wrapperStyle={{paddingTop: '20px'}}
                             iconType="circle"
