@@ -188,14 +188,21 @@ func (h *MonitorHandler) GetHistoryByID(c echo.Context) error {
 	}
 
 	timeRange := c.QueryParam("range")
+	startParam := c.QueryParam("start")
+	endParam := c.QueryParam("end")
 	aggregation := normalizeAggregation(c.QueryParam("aggregation"))
 
 	// 默认时间范围为 5 分钟
-	if timeRange == "" {
+	if timeRange == "" && startParam == "" && endParam == "" {
 		timeRange = "5m"
 	}
 
-	history, err := h.monitorService.GetMonitorHistory(ctx, id, timeRange, aggregation)
+	start, end, err := parseTimeRangeOrStartEnd(timeRange, startParam, endParam)
+	if err != nil {
+		return orz.NewError(400, err.Error())
+	}
+
+	history, err := h.monitorService.GetMonitorHistory(ctx, id, start, end, aggregation)
 	if err != nil {
 		return err
 	}

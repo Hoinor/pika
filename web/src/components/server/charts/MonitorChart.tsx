@@ -10,21 +10,24 @@ import {formatChartTime} from '@/utils/util';
 interface MonitorChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 监控响应时间图表组件
  */
-export const MonitorChart = ({agentId, timeRange, aggregation}: MonitorChartProps) => {
+export const MonitorChart = ({agentId, timeRange, start, end}: MonitorChartProps) => {
     const isMobile = useIsMobile();
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
 
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'monitor',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换 - 支持多个监控任务
@@ -52,7 +55,7 @@ export const MonitorChart = ({agentId, timeRange, aggregation}: MonitorChartProp
 
         // 转换为数组并排序
         return Array.from(timestampMap.values()).sort((a, b) => a.timestamp - b.timestamp);
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 获取所有监控任务的列表（使用名称）
     const monitorKeys = useMemo(() => {
@@ -107,7 +110,7 @@ export const MonitorChart = ({agentId, timeRange, aggregation}: MonitorChartProp
                                 type="number"
                                 scale="time"
                                 domain={['dataMin', 'dataMax']}
-                                tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                                tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                                 stroke="currentColor"
                                 angle={-15}
                                 textAnchor="end"

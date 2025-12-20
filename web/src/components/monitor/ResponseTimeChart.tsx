@@ -4,11 +4,10 @@ import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XA
 import {type GetMetricsResponse, getMonitorHistory} from '@/api/monitor';
 import {AGENT_COLORS} from '@/constants/colors';
 import {MONITOR_TIME_RANGE_OPTIONS} from '@/constants/time';
-import {AGGREGATION_OPTIONS, type AggregationOptionValue} from '@/constants/metrics';
 import {useIsMobile} from '@/hooks/use-mobile';
 import type {AgentMonitorStat} from '@/types';
 import CyberCard from "@/components/CyberCard.tsx";
-import {AggregationSelector, ChartPlaceholder, CustomTooltip, MobileLegend, TimeRangeSelector} from "@/components/common";
+import {ChartPlaceholder, CustomTooltip, MobileLegend, TimeRangeSelector} from "@/components/common";
 import {formatChartTime} from '@/utils/util';
 
 interface ResponseTimeChartProps {
@@ -23,15 +22,22 @@ interface ResponseTimeChartProps {
 export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartProps) => {
     const [selectedAgent, setSelectedAgent] = useState<string>('all');
     const [timeRange, setTimeRange] = useState<string>('1h');
-    const [aggregation, setAggregation] = useState<AggregationOptionValue>('avg');
+    const [customRange, setCustomRange] = useState<{ start: number; end: number } | null>(null);
     const isMobile = useIsMobile();
+    const customStart = timeRange === 'custom' ? customRange?.start : undefined;
+    const customEnd = timeRange === 'custom' ? customRange?.end : undefined;
+    const rangeMs = customStart !== undefined && customEnd !== undefined ? customEnd - customStart : undefined;
 
     // 获取历史数据
     const {data: historyData} = useQuery<GetMetricsResponse>({
-        queryKey: ['monitorHistory', monitorId, timeRange, aggregation],
+        queryKey: ['monitorHistory', monitorId, timeRange, customStart, customEnd],
         queryFn: async () => {
             if (!monitorId) throw new Error('Monitor ID is required');
-            const response = await getMonitorHistory(monitorId, timeRange, aggregation);
+            const response = await getMonitorHistory(monitorId, {
+                range: timeRange,
+                start: customStart,
+                end: customEnd,
+            });
             return response.data;
         },
         refetchInterval: 30000,
@@ -89,7 +95,7 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
 
         // 按时间戳排序
         return Object.values(grouped).sort((a, b) => a.timestamp - b.timestamp);
-    }, [historyData, selectedAgent, timeRange, aggregation]);
+    }, [historyData, selectedAgent, timeRange, customStart, customEnd]);
 
     const visibleMonitorStats = useMemo(() => {
         return monitorStats.filter(stat => selectedAgent === 'all' || stat.agentId === selectedAgent);
@@ -121,11 +127,11 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                         value={timeRange}
                         onChange={setTimeRange}
                         options={MONITOR_TIME_RANGE_OPTIONS}
-                    />
-                    <AggregationSelector
-                        value={aggregation}
-                        onChange={setAggregation}
-                        options={AGGREGATION_OPTIONS}
+                        enableCustom
+                        customRange={customRange}
+                        onCustomRangeApply={(range) => {
+                            setCustomRange(range);
+                        }}
                     />
                     {availableAgents.length > 0 && (
                         <select
@@ -172,7 +178,7 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                                 type="number"
                                 scale="time"
                                 domain={['dataMin', 'dataMax']}
-                                tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                                tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                                 className="text-xs text-gray-600 dark:text-cyan-500 font-mono"
                                 stroke="currentColor"
                                 tickLine={false}

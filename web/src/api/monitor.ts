@@ -65,14 +65,21 @@ export interface GetMetricsResponse {
     series: MetricSeries[];  // 时序数据系列（每个探针一个系列）
 }
 
-// 公开接口 - 获取指定监控的历史数据（VictoriaMetrics 原始时序数据）
-export type MonitorHistoryAggregation = 'avg' | 'max';
+export interface GetMonitorHistoryRequest {
+    range?: string;
+    start?: number;
+    end?: number;
+}
 
-export const getMonitorHistory = (id: string, range: string = '15m', aggregation?: MonitorHistoryAggregation) => {
-    const params = new URLSearchParams();
-    params.append('range', range);
-    if (aggregation) {
-        params.append('aggregation', aggregation);
+// 公开接口 - 获取指定监控的历史数据（VictoriaMetrics 原始时序数据）
+export const getMonitorHistory = (id: string, params: GetMonitorHistoryRequest = {}) => {
+    const {range = '15m', start, end} = params;
+    const query = new URLSearchParams();
+    if (start !== undefined && end !== undefined) {
+        query.append('start', start.toString());
+        query.append('end', end.toString());
+    } else {
+        query.append('range', range);
     }
-    return get<GetMetricsResponse>(`/monitors/${encodeURIComponent(id)}/history?${params.toString()}`);
+    return get<GetMetricsResponse>(`/monitors/${encodeURIComponent(id)}/history?${query.toString()}`);
 };

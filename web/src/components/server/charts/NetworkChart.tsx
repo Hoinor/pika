@@ -10,15 +10,17 @@ import {formatChartTime} from '@/utils/util';
 interface NetworkChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 网络流量图表组件
  * 支持网卡切换
  */
-export const NetworkChart = ({agentId, timeRange, aggregation}: NetworkChartProps) => {
+export const NetworkChart = ({agentId, timeRange, start, end}: NetworkChartProps) => {
     const [selectedInterface, setSelectedInterface] = useState<string>('all');
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
 
     // 查询网卡列表
     const {data: interfacesData} = useNetworkInterfacesQuery(agentId);
@@ -37,9 +39,10 @@ export const NetworkChart = ({agentId, timeRange, aggregation}: NetworkChartProp
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'network',
-        range: timeRange,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
         interfaceName: selectedInterface !== 'all' ? selectedInterface : undefined,
-        aggregation,
     });
 
     // 数据转换
@@ -68,7 +71,7 @@ export const NetworkChart = ({agentId, timeRange, aggregation}: NetworkChartProp
         });
 
         return Array.from(timeMap.values());
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 网卡选择器
     const interfaceSelector = availableInterfaces.length > 0 && (
@@ -115,7 +118,7 @@ export const NetworkChart = ({agentId, timeRange, aggregation}: NetworkChartProp
                             type="number"
                             scale="time"
                             domain={['dataMin', 'dataMax']}
-                            tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                            tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"

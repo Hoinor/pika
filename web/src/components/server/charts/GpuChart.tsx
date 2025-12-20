@@ -9,20 +9,23 @@ import {formatChartTime} from '@/utils/util';
 interface GpuChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * GPU 使用率与温度图表组件
  * 使用双 Y 轴显示使用率和温度
  */
-export const GpuChart = ({agentId, timeRange, aggregation}: GpuChartProps) => {
+export const GpuChart = ({agentId, timeRange, start, end}: GpuChartProps) => {
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'gpu',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -52,7 +55,7 @@ export const GpuChart = ({agentId, timeRange, aggregation}: GpuChartProps) => {
         });
 
         return Array.from(timeMap.values());
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 渲染
     if (isLoading) {
@@ -78,7 +81,7 @@ export const GpuChart = ({agentId, timeRange, aggregation}: GpuChartProps) => {
                         type="number"
                         scale="time"
                         domain={['dataMin', 'dataMax']}
-                        tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                        tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                         stroke="currentColor"
                         className="stroke-gray-400 dark:stroke-cyan-600"
                         style={{fontSize: '12px'}}

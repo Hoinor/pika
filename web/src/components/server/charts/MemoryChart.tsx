@@ -9,19 +9,22 @@ import {formatChartTime} from '@/utils/util';
 interface MemoryChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 内存使用率图表组件
  */
-export const MemoryChart = ({agentId, timeRange, aggregation}: MemoryChartProps) => {
+export const MemoryChart = ({agentId, timeRange, start, end}: MemoryChartProps) => {
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'memory',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -33,7 +36,7 @@ export const MemoryChart = ({agentId, timeRange, aggregation}: MemoryChartProps)
             usage: Number(point.value.toFixed(2)),
             timestamp: point.timestamp,
         }));
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 渲染
     if (isLoading) {
@@ -61,7 +64,7 @@ export const MemoryChart = ({agentId, timeRange, aggregation}: MemoryChartProps)
                             type="number"
                             scale="time"
                             domain={['dataMin', 'dataMax']}
-                            tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                            tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"

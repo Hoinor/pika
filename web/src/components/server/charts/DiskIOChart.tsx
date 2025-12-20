@@ -9,19 +9,22 @@ import {formatChartTime} from '@/utils/util';
 interface DiskIOChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 磁盘 I/O 图表组件
  */
-export const DiskIOChart = ({agentId, timeRange, aggregation}: DiskIOChartProps) => {
+export const DiskIOChart = ({agentId, timeRange, start, end}: DiskIOChartProps) => {
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'disk_io',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -51,7 +54,7 @@ export const DiskIOChart = ({agentId, timeRange, aggregation}: DiskIOChartProps)
         });
 
         return Array.from(timeMap.values());
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 渲染
     if (isLoading) {
@@ -83,7 +86,7 @@ export const DiskIOChart = ({agentId, timeRange, aggregation}: DiskIOChartProps)
                             type="number"
                             scale="time"
                             domain={['dataMin', 'dataMax']}
-                            tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                            tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"

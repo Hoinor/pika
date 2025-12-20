@@ -10,22 +10,25 @@ import {formatChartTime} from '@/utils/util';
 interface TemperatureChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 系统温度图表组件
  * 支持温度类型切换
  */
-export const TemperatureChart = ({agentId, timeRange, aggregation}: TemperatureChartProps) => {
+export const TemperatureChart = ({agentId, timeRange, start, end}: TemperatureChartProps) => {
     const [selectedTempType, setSelectedTempType] = useState<string>('all');
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
 
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'temperature',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -48,7 +51,7 @@ export const TemperatureChart = ({agentId, timeRange, aggregation}: TemperatureC
         });
 
         return Array.from(timeMap.values());
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 提取所有唯一的温度类型
     const temperatureTypes = useMemo(() => {
@@ -112,7 +115,7 @@ export const TemperatureChart = ({agentId, timeRange, aggregation}: TemperatureC
                         type="number"
                         scale="time"
                         domain={['dataMin', 'dataMax']}
-                        tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                        tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                         stroke="currentColor"
                         angle={-15}
                         textAnchor="end"

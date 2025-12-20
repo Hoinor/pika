@@ -4,8 +4,10 @@ import "strings"
 
 func normalizeAggregation(raw string) string {
 	value := strings.ToLower(strings.TrimSpace(raw))
-	if value == "max" {
+	switch value {
+	case "avg", "max":
 		return value
+	default:
+		return ""
 	}
-	return "avg"
 }

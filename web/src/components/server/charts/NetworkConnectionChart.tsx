@@ -9,19 +9,22 @@ import {formatChartTime} from '@/utils/util';
 interface NetworkConnectionChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * 网络连接统计图表组件
  */
-export const NetworkConnectionChart = ({agentId, timeRange, aggregation}: NetworkConnectionChartProps) => {
+export const NetworkConnectionChart = ({agentId, timeRange, start, end}: NetworkConnectionChartProps) => {
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'network_connection',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -51,7 +54,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, aggregation}: Networ
         });
 
         return Array.from(timeMap.values()).sort((a, b) => a.timestamp - b.timestamp);
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 渲染
     if (isLoading) {
@@ -73,7 +76,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, aggregation}: Networ
                             type="number"
                             scale="time"
                             domain={['dataMin', 'dataMax']}
-                            tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                            tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"

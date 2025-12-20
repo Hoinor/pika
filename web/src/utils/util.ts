@@ -76,11 +76,13 @@ export const formatUptime = (seconds: number | undefined | null): string => {
  * @param timeRange - 时间范围（如 '1h', '1d', '3d', '7d'）
  * @returns 格式化后的时间字符串
  */
-export const formatChartTime = (timestamp: number, timeRange: string): string => {
+export const formatChartTime = (timestamp: number, timeRange: string, rangeMs?: number): string => {
     const date = new Date(timestamp);
     
     // 解析时间范围，判断是否超过1天
-    const isLongRange = timeRange.endsWith('d') && parseInt(timeRange) > 1;
+    const isLongRange = rangeMs !== undefined
+        ? rangeMs > 24 * 60 * 60 * 1000
+        : timeRange.endsWith('d') && parseInt(timeRange) > 1;
     
     if (isLongRange) {
         // 超过1天：显示 "月/日 时:分"

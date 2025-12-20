@@ -35,7 +35,7 @@ const MonitorCard = ({monitor, displayMode}: {
     const {data: historyData} = useQuery<GetMetricsResponse>({
         queryKey: ['monitorHistory', monitor.id, '1h'],
         queryFn: async () => {
-            const response = await getMonitorHistory(monitor.id, '1h');
+            const response = await getMonitorHistory(monitor.id, {range: '1h'});
             return response.data;
         },
         refetchInterval: 60000,

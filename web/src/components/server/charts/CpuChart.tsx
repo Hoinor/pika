@@ -9,19 +9,22 @@ import {formatChartTime} from '@/utils/util';
 interface CpuChartProps {
     agentId: string;
     timeRange: string;
-    aggregation?: 'avg' | 'max';
+    start?: number;
+    end?: number;
 }
 
 /**
  * CPU 使用率图表组件
  */
-export const CpuChart = ({agentId, timeRange, aggregation}: CpuChartProps) => {
+export const CpuChart = ({agentId, timeRange, start, end}: CpuChartProps) => {
+    const rangeMs = start !== undefined && end !== undefined ? end - start : undefined;
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'cpu',
-        range: timeRange,
-        aggregation,
+        range: start !== undefined && end !== undefined ? undefined : timeRange,
+        start,
+        end,
     });
 
     // 数据转换
@@ -33,7 +36,7 @@ export const CpuChart = ({agentId, timeRange, aggregation}: CpuChartProps) => {
             usage: Number(point.value.toFixed(2)),
             timestamp: point.timestamp,
         }));
-    }, [metricsResponse, timeRange, aggregation]);
+    }, [metricsResponse, timeRange, start, end]);
 
     // 渲染
     if (isLoading) {
@@ -61,7 +64,7 @@ export const CpuChart = ({agentId, timeRange, aggregation}: CpuChartProps) => {
                             type="number"
                             scale="time"
                             domain={['dataMin', 'dataMax']}
-                            tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
+                            tickFormatter={(value) => formatChartTime(Number(value), timeRange, rangeMs)}
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"

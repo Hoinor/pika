@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dushixiang/pika/internal/metric"
 	"github.com/dushixiang/pika/internal/models"
@@ -400,38 +399,7 @@ func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID stri
 
 // GetMonitorHistory 获取监控任务的历史时序数据
 // 直接返回 VictoriaMetrics 的原始时序数据，包含所有探针的独立序列
-// 支持时间范围：15m, 30m, 1h, 3h, 6h, 12h, 1d, 3d, 7d
-func (s *MonitorService) GetMonitorHistory(ctx context.Context, monitorID, timeRange, aggregation string) (*metric.GetMetricsResponse, error) {
-	// 计算时间范围
-	var duration time.Duration
-	switch timeRange {
-	case "15m":
-		duration = 15 * time.Minute
-	case "30m":
-		duration = 30 * time.Minute
-	case "1h":
-		duration = 1 * time.Hour
-	case "3h":
-		duration = 3 * time.Hour
-	case "6h":
-		duration = 6 * time.Hour
-	case "12h":
-		duration = 12 * time.Hour
-	case "1d", "24h":
-		duration = 24 * time.Hour
-	case "3d":
-		duration = 3 * 24 * time.Hour
-	case "7d":
-		duration = 7 * 24 * time.Hour
-	default:
-		duration = 15 * time.Minute
-	}
-
-	now := time.Now()
-	end := now.UnixMilli()
-	start := now.Add(-duration).UnixMilli()
-
-	// 直接返回 VictoriaMetrics 查询结果，无需任何转换
+func (s *MonitorService) GetMonitorHistory(ctx context.Context, monitorID string, start, end int64, aggregation string) (*metric.GetMetricsResponse, error) {
 	return s.metricService.GetMonitorHistory(ctx, monitorID, start, end, aggregation)
 }
 

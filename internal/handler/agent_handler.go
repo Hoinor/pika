@@ -388,6 +388,32 @@ func parseTimeRange(rangeParam string) (start, end int64, err error) {
 	return start, end, nil
 }
 
+func parseTimeRangeOrStartEnd(rangeParam, startParam, endParam string) (start, end int64, err error) {
+	if startParam != "" || endParam != "" {
+		if startParam == "" || endParam == "" {
+			return 0, 0, fmt.Errorf("start 和 end 必须同时提供")
+		}
+
+		start, err = strconv.ParseInt(startParam, 10, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("无效的 start 时间戳")
+		}
+
+		end, err = strconv.ParseInt(endParam, 10, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("无效的 end 时间戳")
+		}
+
+		if start >= end {
+			return 0, 0, fmt.Errorf("start 必须小于 end")
+		}
+
+		return start, end, nil
+	}
+
+	return parseTimeRange(rangeParam)
+}
+
 // GetMetrics 获取探针聚合指标（公开接口，已登录返回全部，未登录返回公开可见）
 func (h *AgentHandler) GetMetrics(c echo.Context) error {
 	agentID := c.Param("id")
@@ -400,6 +426,8 @@ func (h *AgentHandler) GetMetrics(c echo.Context) error {
 
 	metricType := c.QueryParam("type")
 	rangeParam := c.QueryParam("range")
+	startParam := c.QueryParam("start")
+	endParam := c.QueryParam("end")
 	interfaceName := c.QueryParam("interface") // 网卡过滤参数（仅对 network 类型有效）
 	if interfaceName == "" {
 		interfaceName = "all"
@@ -419,7 +447,7 @@ func (h *AgentHandler) GetMetrics(c echo.Context) error {
 	}
 
 	// 解析时间范围
-	start, end, err := parseTimeRange(rangeParam)
+	start, end, err := parseTimeRangeOrStartEnd(rangeParam, startParam, endParam)
 	if err != nil {
 		return orz.NewError(400, err.Error())
 	}
