@@ -59,7 +59,7 @@ export const TimeRangeSelector = ({
                     "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
                     isDark
                         ? "border-cyan-900/50 bg-black/30 text-cyan-300 hover:border-cyan-700 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 font-mono"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-600 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/30"
                 )}
             >
                 {showCustomOption && (
@@ -75,7 +75,14 @@ export const TimeRangeSelector = ({
             </select>
             {enableCustom && (
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className={cn("text-xs font-medium", isDark ? "text-cyan-400" : "text-slate-600")}>自定义</span>
+                    <span
+                        className={cn(
+                            "text-xs font-medium",
+                            isDark ? "text-cyan-400" : "text-slate-600 dark:text-slate-300"
+                        )}
+                    >
+                        自定义
+                    </span>
                     <input
                         type="datetime-local"
                         value={customStart}
@@ -84,10 +91,17 @@ export const TimeRangeSelector = ({
                             "rounded-lg border px-2 py-1 text-xs font-medium",
                             isDark
                                 ? "border-cyan-900/50 bg-black/30 text-cyan-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-                                : "border-slate-200 bg-white text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/30"
                         )}
                     />
-                    <span className={cn("text-xs font-medium", isDark ? "text-cyan-400" : "text-slate-600")}>至</span>
+                    <span
+                        className={cn(
+                            "text-xs font-medium",
+                            isDark ? "text-cyan-400" : "text-slate-600 dark:text-slate-300"
+                        )}
+                    >
+                        至
+                    </span>
                     <input
                         type="datetime-local"
                         value={customEnd}
@@ -96,7 +110,7 @@ export const TimeRangeSelector = ({
                             "rounded-lg border px-2 py-1 text-xs font-medium",
                             isDark
                                 ? "border-cyan-900/50 bg-black/30 text-cyan-300 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-                                : "border-slate-200 bg-white text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/30"
                         )}
                     />
                     <button
@@ -113,10 +127,10 @@ export const TimeRangeSelector = ({
                             canApply
                                 ? isDark
                                     ? "border-cyan-500/50 bg-cyan-500/20 text-cyan-300"
-                                    : "border-blue-500 bg-blue-500 text-white shadow-sm"
+                                    : "border-blue-500 dark:border-blue-500 bg-blue-500 dark:bg-blue-600 text-white shadow-sm"
                                 : isDark
                                     ? "border-cyan-900/30 bg-black/30 text-cyan-700 cursor-not-allowed"
-                                    : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"
+                                    : "border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                         )}
                     >
                         应用

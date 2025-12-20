@@ -63,7 +63,7 @@ const CompactResourceBar = ({value, label, subtext, icon: Icon, color = "bg-cyan
                                     }}
                                 >
                                     <div
-                                        className="absolute right-0 top-0 bottom-0 w-[1.5px] bg-black shadow-[0_0_8px_black] dark:bg-white dark:shadow-[0_0_8px_white]"></div>
+                                        className="absolute right-0 top-0 bottom-0 w-[1.5px] bg-red-500 shadow-[0_0_8px_red-500] dark:bg-white dark:shadow-[0_0_8px_white]"></div>
                                 </div>
                             </div>
                             <div
