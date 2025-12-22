@@ -749,7 +749,7 @@ func (n *Notifier) sendWeComAppByConfig(ctx context.Context, config map[string]i
 		return fmt.Errorf("企业微信应用配置缺少 corpid")
 	}
 
-	corpSecret, _ := config["corpSecret"].(string)
+	corpSecret, ok := config["corpSecret"].(string)
 	if !ok || corpSecret == "" {
 		return fmt.Errorf("企业微信应用配置缺少 corpsecret")
 	}
