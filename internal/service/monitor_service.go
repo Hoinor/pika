@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -318,11 +319,15 @@ func (s *MonitorService) SendMonitorTaskToAgents(ctx context.Context, monitor mo
 	// 向每个目标探针发送
 	for _, agentID := range targetAgentIDs {
 		if err := s.sendMonitorConfigToAgent(agentID, payload); err != nil {
-			s.logger.Error("发送监控配置失败",
-				zap.String("taskID", monitor.ID),
-				zap.String("taskName", monitor.Name),
-				zap.String("agentID", agentID),
-				zap.Error(err))
+			if errors.Is(err, ws.ErrClientNotFound) {
+				// 忽略未连接的探针
+			} else {
+				s.logger.Error("发送监控配置失败",
+					zap.String("taskID", monitor.ID),
+					zap.String("taskName", monitor.Name),
+					zap.String("agentID", agentID),
+					zap.Error(err))
+			}
 		}
 	}
 
