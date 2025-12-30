@@ -17,6 +17,7 @@ GOFLAGS=CGO_ENABLED=0
 # 构建前端
 build-web:
 	cd web && yarn && yarn build
+	@go run cmd/patch-html/main.go
 
 # 构建服务端（开发）
 build-server:
