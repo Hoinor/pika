@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 )
 
 const (
-	PAMConfigFile  = "/etc/pam.d/sshd"
-	PAMConfigLine  = "session optional pam_exec.so /usr/local/bin/pika_ssh_hook.sh"
-	HookScriptPath = "/usr/local/bin/pika_ssh_hook.sh"
+	PAMConfigFile   = "/etc/pam.d/sshd"
+	PAMConfigLine   = "session optional pam_exec.so /usr/local/bin/pika_ssh_hook.sh"
+	HookScriptPath  = "/usr/local/bin/pika_ssh_hook.sh"
+	SSHDConfigFile  = "/etc/ssh/sshd_config"
+	UsePAMDirective = "UsePAM yes"
 )
 
 // HookManager PAM Hook 管理器
@@ -33,6 +36,11 @@ func (h *HookManager) Install() error {
 	if h.isInstalled() {
 		slog.Info("PAM Hook 已安装，跳过")
 		return nil
+	}
+
+	// 确保 SSH 配置启用 PAM
+	if err := h.ensureUsePAM(); err != nil {
+		return fmt.Errorf("配置 SSH UsePAM 失败: %w", err)
 	}
 
 	// 部署 Hook 脚本
@@ -217,4 +225,133 @@ func (h *HookManager) modifyPAMConfig(add bool) error {
 
 	slog.Info("PAM 配置修改成功", "add", add)
 	return nil
+}
+
+// ensureUsePAM 确保 SSH 配置启用 PAM
+func (h *HookManager) ensureUsePAM() error {
+	// 读取现有配置
+	f, err := os.Open(SSHDConfigFile)
+	if err != nil {
+		return err
+	}
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	f.Close()
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// 检查和修改配置
+	var newLines []string
+	usePAMEnabled := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// 检查是否是 UsePAM 配置行
+		if strings.HasPrefix(trimmed, "UsePAM") {
+			// 检查是否已启用
+			if strings.Contains(trimmed, "yes") && !strings.HasPrefix(trimmed, "#") {
+				usePAMEnabled = true
+				newLines = append(newLines, line)
+			} else {
+				// 注释掉旧的配置行
+				if !strings.HasPrefix(trimmed, "#") {
+					newLines = append(newLines, "# "+line)
+				} else {
+					newLines = append(newLines, line)
+				}
+			}
+			continue
+		}
+
+		newLines = append(newLines, line)
+	}
+
+	// 如果 UsePAM 已正确启用,无需修改
+	if usePAMEnabled {
+		slog.Info("SSH UsePAM 已启用，跳过")
+		return nil
+	}
+
+	// 如果找到了 UsePAM 但未启用,或者没找到,都需要添加配置
+	if !usePAMEnabled {
+		newLines = append(newLines, UsePAMDirective)
+	}
+
+	// 备份原配置
+	backupPath := SSHDConfigFile + ".bak"
+	if err := os.Rename(SSHDConfigFile, backupPath); err != nil {
+		return err
+	}
+
+	// 写入新配置
+	outF, err := os.Create(SSHDConfigFile)
+	if err != nil {
+		// 恢复备份
+		os.Rename(backupPath, SSHDConfigFile)
+		return err
+	}
+	defer outF.Close()
+
+	writer := bufio.NewWriter(outF)
+	for _, line := range newLines {
+		writer.WriteString(line + "\n")
+	}
+	if err := writer.Flush(); err != nil {
+		// 恢复备份
+		outF.Close()
+		os.Rename(backupPath, SSHDConfigFile)
+		return err
+	}
+
+	// 设置正确的权限
+	os.Chmod(SSHDConfigFile, 0600)
+
+	slog.Info("SSH UsePAM 配置成功")
+
+	// 重启 sshd 服务使配置生效
+	if err := h.restartSSHD(); err != nil {
+		slog.Warn("重启 sshd 服务失败，请手动重启", "error", err)
+		// 不返回错误，因为配置已经成功，只是需要手动重启
+	}
+
+	return nil
+}
+
+// restartSSHD 重启 sshd 服务
+func (h *HookManager) restartSSHD() error {
+	// 尝试使用 systemctl (systemd)
+	cmd := exec.Command("systemctl", "restart", "sshd")
+	if err := cmd.Run(); err == nil {
+		slog.Info("已通过 systemctl 重启 sshd 服务")
+		return nil
+	}
+
+	// 尝试 service 命令 (SysV init)
+	cmd = exec.Command("service", "sshd", "restart")
+	if err := cmd.Run(); err == nil {
+		slog.Info("已通过 service 重启 sshd 服务")
+		return nil
+	}
+
+	// 尝试直接重启 (某些系统可能使用 ssh 而不是 sshd)
+	cmd = exec.Command("systemctl", "restart", "ssh")
+	if err := cmd.Run(); err == nil {
+		slog.Info("已通过 systemctl 重启 ssh 服务")
+		return nil
+	}
+
+	cmd = exec.Command("service", "ssh", "restart")
+	if err := cmd.Run(); err == nil {
+		slog.Info("已通过 service 重启 ssh 服务")
+		return nil
+	}
+
+	return fmt.Errorf("无法找到合适的方式重启 sshd 服务")
 }

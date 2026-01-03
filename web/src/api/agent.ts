@@ -563,7 +563,7 @@ export interface GetSSHLoginEventsParams {
     endTime?: number;
 }
 
-export const getSSHLoginEvents = (agentId: string, params?: GetSSHLoginEventsParams) => {
+export const getSSHLoginEvents = async (agentId: string, params?: GetSSHLoginEventsParams) => {
     const query = new URLSearchParams();
     if (params?.page) query.append('page', params.page.toString());
     if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
@@ -573,10 +573,11 @@ export const getSSHLoginEvents = (agentId: string, params?: GetSSHLoginEventsPar
     if (params?.startTime) query.append('startTime', params.startTime.toString());
     if (params?.endTime) query.append('endTime', params.endTime.toString());
 
-    return get<SSHLoginEventListResponse>(`/admin/agents/${agentId}/ssh-login/events?${query.toString()}`);
+    const response = await get<SSHLoginEventListResponse>(`/admin/agents/${agentId}/ssh-login/events?${query.toString()}`);
+    return response.data;
 };
 
 // 删除 SSH 登录事件
-export const deleteSSHLoginEvents = (agentId: string) => {
-    return del(`/admin/agents/${agentId}/ssh-login/events`);
+export const deleteSSHLoginEvents = async (agentId: string) => {
+    await del(`/admin/agents/${agentId}/ssh-login/events`);
 };

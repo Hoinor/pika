@@ -1,6 +1,6 @@
 import React, {useRef} from 'react';
-import {App, Tag, Tooltip} from 'antd';
-import {CheckCircle, Key, Terminal, XCircle} from 'lucide-react';
+import {App, Button, Tag, Tooltip} from 'antd';
+import {Terminal} from 'lucide-react';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
 import type {SSHLoginEvent} from '@/types';
@@ -13,7 +13,7 @@ interface SSHLoginEventsProps {
 
 const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
     const {message, modal} = App.useApp();
-    const actionRef = useRef<ActionType>();
+    const actionRef = useRef<ActionType>(null);
 
     // 定义表格列
     const columns: ProColumns<SSHLoginEvent>[] = [
@@ -42,9 +42,9 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             },
             render: (_, record) => (
                 record.status === 'success' ? (
-                    <Tag icon={<CheckCircle size={14}/>} color="success">成功</Tag>
+                    <Tag variant={'filled'} color="success">成功</Tag>
                 ) : (
-                    <Tag icon={<XCircle size={14}/>} color="error">失败</Tag>
+                    <Tag variant={'filled'} color="error">失败</Tag>
                 )
             ),
         },
@@ -84,7 +84,7 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
                 record.method ? (
                     <Tooltip
                         title={record.method === 'password' ? '密码认证' : record.method === 'publickey' ? '公钥认证' : record.method}>
-                        <Tag icon={<Key size={14}/>}>{record.method}</Tag>
+                        <Tag>{record.method}</Tag>
                     </Tooltip>
                 ) : '-'
             ),
@@ -122,8 +122,8 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    const response = await deleteSSHLoginEvents(agentId);
-                    message.success(response.message || '所有事件已删除');
+                    await deleteSSHLoginEvents(agentId);
+                    message.success('所有事件已删除');
                     actionRef.current?.reload();
                 } catch (error: any) {
                     console.error('Failed to delete SSH login events:', error);
@@ -174,12 +174,12 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             headerTitle="登录事件"
             toolBarRender={() => [
                 <Tooltip key="delete" title="删除所有事件">
-                    <a
+                    <Button
                         onClick={handleDeleteAllEvents}
-                        className="text-red-500 hover:text-red-600"
+                        danger={true}
                     >
                         删除所有事件
-                    </a>
+                    </Button>
                 </Tooltip>,
             ]}
             locale={{

@@ -42,3 +42,4 @@ agent.yaml
 playground
 web/node_modules
 web/dist
+deploy.sh
