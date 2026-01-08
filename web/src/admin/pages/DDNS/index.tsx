@@ -8,9 +8,9 @@ import dayjs from 'dayjs';
 import type {DDNSConfig} from '@/types';
 import {deleteDDNSConfig, disableDDNSConfig, enableDDNSConfig, getDDNSConfigs,} from '@/api/ddns';
 import {getErrorMessage} from '@/lib/utils';
-import DDNSModal from './components/DDNSModal';
-import RecordsDrawer from './components/RecordsDrawer';
-import DNSProviderModal from './components/DNSProviderModal';
+import DDNSModal from './DDNSModal.tsx';
+import RecordsDrawer from './RecordsDrawer.tsx';
+import DNSProviderModal from './DNSProviderModal.tsx';
 
 const DDNSPage = () => {
     const {message, modal} = App.useApp();

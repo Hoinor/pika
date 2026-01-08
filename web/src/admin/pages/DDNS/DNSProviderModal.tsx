@@ -1,8 +1,8 @@
 import {useState, useEffect} from 'react';
 import {App, Modal, Form, Input, Switch, Tabs, Button, Descriptions, Tag} from 'antd';
-import {getDNSProviders, upsertDNSProvider, deleteDNSProvider} from '@/api/dnsProvider';
-import type {DNSProviderConfig} from '@/types/ddns';
-import {getErrorMessage} from '@/lib/utils';
+import {getDNSProviders, upsertDNSProvider, deleteDNSProvider} from '@/api/dnsProvider.ts';
+import type {DNSProviderConfig} from '@/types/ddns.ts';
+import {getErrorMessage} from '@/lib/utils.ts';
 
 interface DNSProviderModalProps {
     open: boolean;

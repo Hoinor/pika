@@ -386,7 +386,7 @@ const ServerList = () => {
                                                     <span>{formatSpeed(upload)}</span>
                                                 </span>
                                             </div>
-                                            {server.traffic?.limit > 0 && (
+                                            {server.traffic?.enabled && (
                                                 <div className="w-32 text-xs">
                                                     <div
                                                         className="flex justify-between text-gray-600 dark:text-cyan-500 mb-0.5">

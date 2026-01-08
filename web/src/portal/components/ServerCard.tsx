@@ -213,7 +213,7 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                     </div>
 
                     {/* 流量限制 */}
-                    {server.traffic?.limit > 0 && (
+                    {server.traffic?.enabled && (
                         <div className="pt-2 border-t border-slate-200 dark:border-cyan-900/30">
                             <div className="flex justify-between text-xs text-gray-600 dark:text-cyan-500 mb-1">
                                 <span>流量使用</span>

@@ -520,9 +520,9 @@ export const updateTrafficConfig = (agentId: string, data: UpdateTrafficConfigRe
     return put(`/admin/agents/${agentId}/traffic-config`, data);
 };
 
-// 获取流量统计（公开接口，支持可选认证）
+// 获取流量统计（管理员接口）
 export const getTrafficStats = (agentId: string) => {
-    return get<TrafficStats>(`/agents/${agentId}/traffic`);
+    return get<TrafficStats>(`/admin/agents/${agentId}/traffic`);
 };
 
 // 手动重置流量（管理员接口）

@@ -1,9 +1,9 @@
 import {useRef} from 'react';
 import {App, Form, Input, Modal, Select, Switch} from 'antd';
-import {createDDNSConfig, getDDNSConfig, updateDDNSConfig} from '@/api/ddns';
-import {getDNSProviders} from '@/api/dnsProvider';
-import type {CreateDDNSConfigRequest, UpdateDDNSConfigRequest} from '@/types/ddns';
-import {getAgentPaging} from '@/api/agent';
+import {createDDNSConfig, getDDNSConfig, updateDDNSConfig} from '@/api/ddns.ts';
+import {getDNSProviders} from '@/api/dnsProvider.ts';
+import type {CreateDDNSConfigRequest, UpdateDDNSConfigRequest} from '@/types/ddns.ts';
+import {getAgentPaging} from '@/api/agent.ts';
 import {ProForm, ProFormDependency, type ProFormInstance} from "@ant-design/pro-components";
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 

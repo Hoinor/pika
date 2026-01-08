@@ -470,7 +470,7 @@ func (s *AgentService) InitStatus(ctx context.Context) error {
 }
 
 // UpdateTrafficConfig 更新流量配置
-func (s *AgentService) UpdateTrafficConfig(ctx context.Context, agentID string, limit uint64, resetDay int) error {
+func (s *AgentService) UpdateTrafficConfig(ctx context.Context, agentID string, enabled bool, limit uint64, resetDay int) error {
 	if resetDay < 0 || resetDay > 31 {
 		return fmt.Errorf("重置日期必须在0-31之间")
 	}
@@ -483,15 +483,28 @@ func (s *AgentService) UpdateTrafficConfig(ctx context.Context, agentID string, 
 	now := time.Now().UnixMilli()
 	stats := agent.TrafficStats.Data()
 	oldResetDay := stats.ResetDay
+	oldEnabled := stats.Enabled
 
+	// 设置配置
+	stats.Enabled = enabled
 	stats.Limit = limit
 	stats.ResetDay = resetDay
 
-	// 如果是首次设置或修改重置日期,重置流量统计
-	if stats.PeriodStart == 0 || resetDay != oldResetDay {
+	// 如果是首次启用、禁用后重新启用，或修改重置日期，重置流量统计
+	if (!oldEnabled && stats.Enabled) || (stats.Enabled && resetDay != oldResetDay) || (stats.Enabled && stats.PeriodStart == 0) {
 		stats.Used = 0
 		stats.PeriodStart = now
 		stats.BaselineRecv = 0 // 下次上报时会设置正确的基线
+		stats.AlertSent80 = false
+		stats.AlertSent90 = false
+		stats.AlertSent100 = false
+	}
+
+	// 如果禁用流量统计，清空相关数据
+	if !stats.Enabled {
+		stats.Used = 0
+		stats.PeriodStart = 0
+		stats.BaselineRecv = 0
 		stats.AlertSent80 = false
 		stats.AlertSent90 = false
 		stats.AlertSent100 = false
@@ -512,11 +525,12 @@ func (s *AgentService) GetTrafficStats(ctx context.Context, agentID string) (*Tr
 	trafficData := agent.TrafficStats.Data()
 
 	stats := &TrafficStats{
-		TrafficLimit:    trafficData.Limit,
-		TrafficUsed:     trafficData.Used,
-		TrafficResetDay: trafficData.ResetDay,
-		PeriodStart:     trafficData.PeriodStart,
-		AlertsSent: TrafficAlerts{
+		Enabled:     trafficData.Enabled,
+		Limit:       trafficData.Limit,
+		Used:        trafficData.Used,
+		ResetDay:    trafficData.ResetDay,
+		PeriodStart: trafficData.PeriodStart,
+		Alerts: TrafficAlerts{
 			Sent80:  trafficData.AlertSent80,
 			Sent90:  trafficData.AlertSent90,
 			Sent100: trafficData.AlertSent100,
@@ -525,11 +539,11 @@ func (s *AgentService) GetTrafficStats(ctx context.Context, agentID string) (*Tr
 
 	// 计算使用百分比
 	if trafficData.Limit > 0 {
-		stats.TrafficUsedPercent = float64(trafficData.Used) / float64(trafficData.Limit) * 100
+		stats.UsedPercent = float64(trafficData.Used) / float64(trafficData.Limit) * 100
 		if trafficData.Used < trafficData.Limit {
-			stats.TrafficRemaining = trafficData.Limit - trafficData.Used
+			stats.Remaining = trafficData.Limit - trafficData.Used
 		} else {
-			stats.TrafficRemaining = 0
+			stats.Remaining = 0
 		}
 	}
 
@@ -606,7 +620,8 @@ func (s *AgentService) CheckAndResetTraffic(ctx context.Context) error {
 // shouldResetTraffic 判断是否需要重置流量
 func (s *AgentService) shouldResetTraffic(agent *models.Agent, now time.Time) bool {
 	stats := agent.TrafficStats.Data()
-	if stats.ResetDay == 0 || stats.PeriodStart == 0 {
+	// 流量统计未启用、未配置重置日期或周期未开始时不重置
+	if !stats.Enabled || stats.ResetDay == 0 || stats.PeriodStart == 0 {
 		return false
 	}
 
@@ -618,10 +633,23 @@ func (s *AgentService) shouldResetTraffic(agent *models.Agent, now time.Time) bo
 
 // calculateNextResetDate 计算下次重置日期
 func calculateNextResetDate(periodStart time.Time, resetDay int) time.Time {
-	year, month, _ := periodStart.Date()
+	year, month, day := periodStart.Date()
 	location := periodStart.Location()
 
-	// 计算下一个月
+	// 先计算当月的重置日期
+	currentMonthLastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, location).Day()
+	currentMonthResetDay := resetDay
+	if resetDay > currentMonthLastDay {
+		currentMonthResetDay = currentMonthLastDay
+	}
+	currentMonthReset := time.Date(year, month, currentMonthResetDay, 0, 0, 0, 0, location)
+
+	// 如果当月的重置日期还没到（在 periodStart 之后或同一天），返回当月重置日期
+	if day < currentMonthResetDay || (day == currentMonthResetDay && periodStart.Before(currentMonthReset)) {
+		return currentMonthReset
+	}
+
+	// 当月重置日期已过，计算下个月的重置日期
 	nextMonth := month + 1
 	nextYear := year
 	if nextMonth > 12 {
@@ -630,26 +658,27 @@ func calculateNextResetDate(periodStart time.Time, resetDay int) time.Time {
 	}
 
 	// 处理月末日期(如2月没有31号)
-	lastDayOfMonth := time.Date(nextYear, nextMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
-	actualDay := resetDay
-	if resetDay > lastDayOfMonth {
-		actualDay = lastDayOfMonth
+	nextMonthLastDay := time.Date(nextYear, nextMonth+1, 0, 0, 0, 0, 0, location).Day()
+	nextMonthResetDay := resetDay
+	if resetDay > nextMonthLastDay {
+		nextMonthResetDay = nextMonthLastDay
 	}
 
-	return time.Date(nextYear, nextMonth, actualDay, 0, 0, 0, 0, location)
+	return time.Date(nextYear, nextMonth, nextMonthResetDay, 0, 0, 0, 0, location)
 }
 
 // TrafficStats 流量统计信息
 type TrafficStats struct {
-	TrafficLimit       uint64        `json:"trafficLimit"`
-	TrafficUsed        uint64        `json:"trafficUsed"`
-	TrafficUsedPercent float64       `json:"trafficUsedPercent"`
-	TrafficRemaining   uint64        `json:"trafficRemaining"`
-	TrafficResetDay    int           `json:"trafficResetDay"`
-	PeriodStart        int64         `json:"periodStart"`
-	PeriodEnd          int64         `json:"periodEnd"`
-	DaysUntilReset     int           `json:"daysUntilReset"`
-	AlertsSent         TrafficAlerts `json:"alerts"`
+	Enabled        bool          `json:"enabled"`
+	Limit          uint64        `json:"limit"`
+	Used           uint64        `json:"used"`
+	UsedPercent    float64       `json:"usedPercent"`
+	Remaining      uint64        `json:"remaining"`
+	ResetDay       int           `json:"resetDay"`
+	PeriodStart    int64         `json:"periodStart"`
+	PeriodEnd      int64         `json:"periodEnd"`
+	DaysUntilReset int           `json:"daysUntilReset"`
+	Alerts         TrafficAlerts `json:"alerts"`
 }
 
 // TrafficAlerts 流量告警状态

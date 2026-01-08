@@ -2,9 +2,10 @@ import {useEffect, useState} from 'react';
 import {useNavigate, useParams, useSearchParams} from 'react-router-dom';
 import type {MenuProps, TabsProps} from 'antd';
 import {Alert, App, Button, Card, Descriptions, Dropdown, Space, Spin, Tabs, Tag} from 'antd';
-import {Activity, ArrowLeft, Clock, FileWarning, Lock, RefreshCw, Shield, Terminal} from 'lucide-react';
+import {Activity, ArrowLeft, Clock, FileWarning, Lock, RefreshCw, Shield, Terminal, TrendingUp} from 'lucide-react';
 import TamperProtection from './TamperProtection.tsx';
 import SSHLoginMonitor from './SSHLoginMonitor.tsx';
+import TrafficStats from './TrafficStats.tsx';
 import {getAgentForAdmin, getAuditResult, sendAuditCommand, type VPSAuditResult} from '@/api/agent.ts';
 import type {Agent} from '@/types';
 import dayjs from 'dayjs';
@@ -164,6 +165,16 @@ const AgentDetail = () => {
             ),
         },
         {
+            key: 'traffic',
+            label: (
+                <div className="flex items-center gap-2 text-sm">
+                    <TrendingUp size={16}/>
+                    <div>流量统计</div>
+                </div>
+            ),
+            children: <TrafficStats agentId={agent?.id || ''}/>,
+        },
+        {
             key: 'audit',
             label: (
                 <div className="flex items-center gap-2 text-sm">
@@ -172,11 +183,11 @@ const AgentDetail = () => {
                 </div>
             ),
             children: (
-                <Space direction="vertical" style={{width: '100%'}}>
+                <Space orientation="vertical" style={{width: '100%'}}>
                     {/* 非 Linux 系统提示 */}
                     {agent && !agent.os.toLowerCase().includes('linux') && (
                         <Alert
-                            message="功能限制"
+                            title="功能限制"
                             description="安全审计功能仅支持 Linux 系统。当前系统为 Windows 或其他系统，无法使用此功能。"
                             type="warning"
                             showIcon
@@ -186,9 +197,9 @@ const AgentDetail = () => {
                     {!auditResult ? (
                         agent?.os.toLowerCase().includes('linux') ? (
                             <Alert
-                                message="暂无审计结果"
+                                title="暂无审计结果"
                                 description={
-                                    <Space direction="vertical">
+                                    <Space orientation="vertical">
                                         <span>该探针还没有进行过安全审计。点击右上角"下发命令"按钮，选择"安全审计"来执行首次审计。</span>
                                         <Button
                                             type="primary"
@@ -222,7 +233,7 @@ const AgentDetail = () => {
                 <TamperProtection agentId={agent.id}/>
             ) : (
                 <Alert
-                    message="功能限制"
+                    title="功能限制"
                     description="防篡改保护功能仅支持 Linux 系统。当前系统为 Windows 或其他系统，无法使用此功能。"
                     type="warning"
                     showIcon
@@ -241,7 +252,7 @@ const AgentDetail = () => {
                 <SSHLoginMonitor agentId={agent.id}/>
             ) : (
                 <Alert
-                    message="功能限制"
+                    title="功能限制"
                     description="SSH 登录监控功能仅支持 Linux 系统。当前系统为 Windows 或其他系统，无法使用此功能。"
                     type="warning"
                     showIcon

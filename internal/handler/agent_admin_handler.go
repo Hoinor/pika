@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dushixiang/pika/internal/protocol"
-	"github.com/dushixiang/pika/internal/utils"
 	"github.com/go-orz/orz"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -16,7 +15,7 @@ import (
 func (h *AgentHandler) Paging(c echo.Context) error {
 	status := c.QueryParam("status")
 
-	pr := orz.GetPageRequest(c, "name")
+	pr := orz.GetPageRequest(c, "weight", "name")
 
 	builder := orz.NewPageBuilder(h.agentService.AgentRepo.Repository).
 		PageRequest(pr).
@@ -126,7 +125,7 @@ func (h *AgentHandler) ListAuditResults(c echo.Context) error {
 	})
 }
 
-// UpdateInfo 更新探针信息（名称、标签、到期时间、可见性）
+// UpdateInfo 更新探针信息（名称、标签、到期时间、可见性、权重、备注）
 func (h *AgentHandler) UpdateInfo(c echo.Context) error {
 	agentID := c.Param("id")
 
@@ -135,6 +134,8 @@ func (h *AgentHandler) UpdateInfo(c echo.Context) error {
 		Tags       []string `json:"tags"`
 		ExpireTime int64    `json:"expireTime"`
 		Visibility string   `json:"visibility"`
+		Weight     int      `json:"weight"`
+		Remark     string   `json:"remark"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return orz.NewError(400, "请求参数错误")
@@ -150,6 +151,8 @@ func (h *AgentHandler) UpdateInfo(c echo.Context) error {
 	agent.Tags = req.Tags
 	agent.ExpireTime = req.ExpireTime
 	agent.Visibility = req.Visibility
+	agent.Weight = req.Weight
+	agent.Remark = req.Remark
 	agent.UpdatedAt = time.Now().UnixMilli()
 
 	if err := h.agentService.AgentRepo.Save(ctx, &agent); err != nil {
@@ -268,8 +271,9 @@ func (h *AgentHandler) UpdateTrafficConfig(c echo.Context) error {
 	agentID := c.Param("id")
 
 	var req struct {
-		TrafficLimit    uint64 `json:"trafficLimit"`
-		TrafficResetDay int    `json:"trafficResetDay"`
+		Enabled  bool   `json:"enabled"`
+		Limit    uint64 `json:"limit"`
+		ResetDay int    `json:"resetDay"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -277,7 +281,7 @@ func (h *AgentHandler) UpdateTrafficConfig(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	if err := h.agentService.UpdateTrafficConfig(ctx, agentID, req.TrafficLimit, req.TrafficResetDay); err != nil {
+	if err := h.agentService.UpdateTrafficConfig(ctx, agentID, req.Enabled, req.Limit, req.ResetDay); err != nil {
 		return err
 	}
 
@@ -286,16 +290,10 @@ func (h *AgentHandler) UpdateTrafficConfig(c echo.Context) error {
 	})
 }
 
-// GetTrafficStats 查询流量统计(支持可选认证)
+// GetTrafficStats 查询流量统计(管理员接口)
 func (h *AgentHandler) GetTrafficStats(c echo.Context) error {
 	agentID := c.Param("id")
 	ctx := c.Request().Context()
-
-	// 检查访问权限
-	isAuthenticated := utils.IsAuthenticated(c)
-	if _, err := h.agentService.GetAgentByAuth(ctx, agentID, isAuthenticated); err != nil {
-		return err
-	}
 
 	stats, err := h.agentService.GetTrafficStats(ctx, agentID)
 	if err != nil {

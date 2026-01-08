@@ -36,8 +36,8 @@ func (s *TrafficService) UpdateAgentTraffic(ctx context.Context, agentID string,
 	// 获取流量统计数据
 	stats := agent.TrafficStats.Data()
 
-	// 如果未配置流量限制,跳过更新
-	if stats.Limit == 0 && stats.ResetDay == 0 {
+	// 如果流量统计未启用,跳过更新
+	if !stats.Enabled {
 		return nil
 	}
 

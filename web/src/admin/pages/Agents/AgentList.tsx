@@ -1,11 +1,11 @@
 import {useEffect, useRef, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
 import type {MenuProps} from 'antd';
 import {App, Button, DatePicker, Divider, Dropdown, Form, Input, InputNumber, Modal, Radio, Select, Space, Tag} from 'antd';
 import {Edit, Eye, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2} from 'lucide-react';
-import {batchUpdateTags, deleteAgent, getAgentPaging, getTags, updateAgentInfo, updateTrafficConfig} from '@/api/agent.ts';
+import {batchUpdateTags, deleteAgent, getAgentPaging, getTags, updateAgentInfo} from '@/api/agent.ts';
 import type {Agent} from '@/types';
 import {getErrorMessage} from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -46,8 +46,8 @@ const AgentList = () => {
             tags: agent.tags || [],
             expireTime: agent.expireTime ? dayjs(agent.expireTime) : null,
             visibility: agent.visibility || 'public',
-            trafficLimit: agent.trafficLimit ? agent.trafficLimit / (1024 * 1024 * 1024) : 0, // 转换为GB
-            trafficResetDay: agent.trafficResetDay || 0,
+            weight: agent.weight || 0,
+            remark: agent.remark || '',
         });
         setEditModalVisible(true);
     };
@@ -66,6 +66,8 @@ const AgentList = () => {
                 name: values.name,
                 visibility: values.visibility || 'public',
                 tags: values.tags || [],
+                weight: values.weight || 0,
+                remark: values.remark || '',
             };
 
             if (values.expireTime) {
@@ -73,13 +75,6 @@ const AgentList = () => {
             }
 
             await updateAgentInfo(currentAgent.id, data);
-
-            // 保存流量配置（将GB转换为字节）
-            const trafficLimitBytes = (values.trafficLimit || 0) * 1024 * 1024 * 1024;
-            await updateTrafficConfig(currentAgent.id, {
-                trafficLimit: trafficLimitBytes,
-                trafficResetDay: values.trafficResetDay || 0,
-            });
 
             messageApi.success('探针信息更新成功');
             setEditModalVisible(false);
@@ -163,8 +158,12 @@ const AgentList = () => {
             fixed: 'left',
             render: (_, record) => (
                 <div className="space-y-1">
-                    <div className="font-medium">{record.name || record.hostname}</div>
-                    <Tag color="geekblue" bordered={false}>{record.os} · {record.arch}</Tag>
+                    <div className="font-medium">
+                        <Link to={`/admin/agents/${record.id}`}>
+                            {record.name || record.hostname}
+                        </Link>
+                    </div>
+                    <Tag color="geekblue" variant={'filled'}>{record.os} · {record.arch}</Tag>
                 </div>
             ),
         },
@@ -187,6 +186,61 @@ const AgentList = () => {
                     )}
                 </>
             ),
+        },
+        {
+            title: '流量统计',
+            key: 'trafficStats',
+            hideInSearch: true,
+            width: 120,
+            render: (_, record) => {
+                const trafficStats = record.trafficStats;
+                if (!trafficStats || !trafficStats.enabled) {
+                    return <Tag bordered={false}>未启用</Tag>;
+                }
+                return (
+                    <div className="flex flex-col gap-1">
+                        <Tag color="green" bordered={false}>已启用</Tag>
+                        {trafficStats.limit > 0 && (
+                            <span className="text-xs text-gray-500">
+                                {(trafficStats.used / (1024 * 1024 * 1024)).toFixed(2)}GB / {(trafficStats.limit / (1024 * 1024 * 1024)).toFixed(0)}GB
+                            </span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            title: '防篡改保护',
+            key: 'tamperProtect',
+            hideInSearch: true,
+            width: 120,
+            render: (_, record) => {
+                const config = record.tamperProtectConfig;
+                if (!config || !config.enabled) {
+                    return <Tag bordered={false}>未启用</Tag>;
+                }
+                return (
+                    <div className="flex flex-col gap-1">
+                        <Tag color="green" bordered={false}>已启用</Tag>
+                        {config.paths && config.paths.length > 0 && (
+                            <span className="text-xs text-gray-500">{config.paths.length} 个路径</span>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            title: 'SSH登录监控',
+            key: 'sshLogin',
+            hideInSearch: true,
+            width: 120,
+            render: (_, record) => {
+                const config = record.sshLoginConfig;
+                if (!config || !config.enabled) {
+                    return <Tag bordered={false}>未启用</Tag>;
+                }
+                return <Tag color="green" bordered={false}>已启用</Tag>;
+            },
         },
         {
             title: '到期时间',
@@ -476,35 +530,28 @@ const AgentList = () => {
                         />
                     </Form.Item>
                     <Form.Item
-                        label="流量限额"
-                        name="trafficLimit"
-                        rules={[{required: true, message: '请输入流量限额'}]}
-                        extra="设置流量限额(GB)，0表示不限制"
+                        label="权重排序"
+                        name="weight"
+                        extra="数字越大排序越靠前，默认为0"
                     >
                         <InputNumber
                             min={0}
                             step={1}
                             precision={0}
-                            placeholder="请输入流量限额(GB)"
+                            placeholder="请输入权重"
                             style={{width: '100%'}}
-                            addonAfter="GB"
                         />
                     </Form.Item>
                     <Form.Item
-                        label="流量重置日期"
-                        name="trafficResetDay"
-                        rules={[{required: true, message: '请选择流量重置日期'}]}
-                        extra="每月的几号重置流量，0表示不自动重置"
+                        label="备注"
+                        name="remark"
+                        extra="备注信息"
                     >
-                        <Select
-                            placeholder="请选择流量重置日期"
-                            options={[
-                                {label: '不自动重置', value: 0},
-                                ...Array.from({length: 31}, (_, i) => ({
-                                    label: `每月${i + 1}号`,
-                                    value: i + 1,
-                                })),
-                            ]}
+                        <Input.TextArea
+                            rows={3}
+                            placeholder="请输入备注信息"
+                            maxLength={500}
+                            showCount
                         />
                     </Form.Item>
                 </Form>

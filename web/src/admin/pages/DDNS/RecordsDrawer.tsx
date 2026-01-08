@@ -2,8 +2,8 @@ import {useState, useEffect} from 'react';
 import {App, Drawer, Table, Tag, Empty} from 'antd';
 import type {ColumnType} from 'antd/es/table';
 import dayjs from 'dayjs';
-import {getDDNSRecords} from '@/api/ddns';
-import type {DDNSConfig, DDNSRecord} from '@/types/ddns';
+import {getDDNSRecords} from '@/api/ddns.ts';
+import type {DDNSConfig, DDNSRecord} from '@/types/ddns.ts';
 import {ArrowRight, CheckCircle2, XCircle} from 'lucide-react';
 
 interface RecordsDrawerProps {

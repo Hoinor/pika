@@ -2,7 +2,6 @@ package handler
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/dushixiang/pika/internal/models"
@@ -43,10 +42,16 @@ func (h *AgentHandler) GetAgents(c echo.Context) error {
 	}
 
 	slices.SortFunc(agents, func(a, b models.Agent) int {
-		if a.Status == b.Status {
-			return strings.Compare(a.Name, b.Name)
+		// 先按照状态排序
+		if a.Status != b.Status {
+			return b.Status - a.Status
 		}
-		return strings.Compare(strconv.Itoa(b.Status), strconv.Itoa(a.Status))
+		// 再按权重排序（数字越大越靠前）
+		if a.Weight != b.Weight {
+			return b.Weight - a.Weight
+		}
+		// 权重相同时按名称排序
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	result := make([]map[string]interface{}, 0, len(agents))
@@ -72,16 +77,20 @@ func (h *AgentHandler) buildAgentListItem(agent models.Agent) map[string]interfa
 		"status":     agent.Status,
 		"lastSeenAt": agent.LastSeenAt,
 		"visibility": agent.Visibility,
+		"weight":     agent.Weight,
 	}
 
 	trafficStats := agent.TrafficStats.Data()
-	if trafficStats.Limit > 0 {
+	if trafficStats.Enabled {
 		item["traffic"] = map[string]any{
-			"limit": trafficStats.Limit,
-			"used":  trafficStats.Used,
+			"enabled": true,
+			"limit":   trafficStats.Limit,
+			"used":    trafficStats.Used,
 		}
 	} else {
-		item["traffic"] = map[string]any{}
+		item["traffic"] = map[string]any{
+			"enabled": false,
+		}
 	}
 
 	metrics, ok := h.metricService.GetLatestMetrics(agent.ID)

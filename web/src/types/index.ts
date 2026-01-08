@@ -26,16 +26,47 @@ export interface Agent {
     expireTime?: number;     // 到期时间（时间戳毫秒）
     status: number;
     visibility?: string;     // 可见性: public-匿名可见, private-登录可见
+    weight?: number;         // 权重排序（数字越大越靠前）
+    remark?: string;         // 备注信息
     lastSeenAt: string | number;  // 支持字符串或时间戳
     createdAt?: string;
     updatedAt?: string;
     // 流量统计相关字段
     traffic?: TrafficData;        // 流量
+    trafficStats?: TrafficStatsData; // 流量统计配置
+    tamperProtectConfig?: TamperProtectConfig; // 防篡改保护配置
+    sshLoginConfig?: SSHLoginConfigData; // SSH登录监控配置
 }
 
 export interface TrafficData {
+    enabled: boolean;
     limit?: number;
     used?: number;
+}
+
+export interface TrafficStatsData {
+    enabled: boolean;
+    limit: number;        // 流量限额(字节), 0表示不限制
+    used: number;         // 当前周期已使用流量(字节)
+    resetDay: number;     // 流量重置日期(1-31), 0表示不自动重置
+    periodStart: number;  // 当前周期开始时间(时间戳毫秒)
+    baselineRecv: number; // 当前周期流量基线
+    alertSent80: boolean;
+    alertSent90: boolean;
+    alertSent100: boolean;
+}
+
+export interface TamperProtectConfig {
+    enabled: boolean;
+    paths?: string[];
+    applyStatus?: string;
+    applyMessage?: string;
+}
+
+export interface SSHLoginConfigData {
+    enabled: boolean;
+    applyStatus?: string;
+    applyMessage?: string;
 }
 
 // 聚合指标数据（所有图表查询只返回聚合数据）
@@ -459,11 +490,12 @@ export interface TrafficAlerts {
 }
 
 export interface TrafficStats {
-    trafficLimit: number;
-    trafficUsed: number;
-    trafficUsedPercent: number;
-    trafficRemaining: number;
-    trafficResetDay: number;
+    enabled: boolean;
+    limit: number;
+    used: number;
+    usedPercent: number;
+    remaining: number;
+    resetDay: number;
     periodStart: number;
     periodEnd: number;
     daysUntilReset: number;
@@ -471,8 +503,9 @@ export interface TrafficStats {
 }
 
 export interface UpdateTrafficConfigRequest {
-    trafficLimit: number;    // 流量限额(字节), 0表示不限制
-    trafficResetDay: number; // 流量重置日期(1-31), 0表示不自动重置
+    enabled: boolean;  // 是否启用
+    limit: number;     // 流量限额(字节), 0表示不限制
+    resetDay: number;  // 流量重置日期(1-31), 0表示不自动重置
 }
 
 // SSH 登录监控相关

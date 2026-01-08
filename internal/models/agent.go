@@ -15,6 +15,8 @@ type Agent struct {
 	ExpireTime int64                       `json:"expireTime"`                            // 到期时间（时间戳毫秒）
 	Status     int                         `json:"status"`                                // 状态: 0-离线, 1-在线
 	Visibility string                      `gorm:"default:public" json:"visibility"`      // 可见性: public-匿名可见, private-登录可见
+	Weight     int                         `gorm:"default:0;index" json:"weight"`         // 权重排序（数字越大越靠前）
+	Remark     string                      `json:"remark"`                                // 备注信息
 	LastSeenAt int64                       `gorm:"index" json:"lastSeenAt"`               // 最后上线时间（时间戳毫秒）
 	CreatedAt  int64                       `json:"createdAt"`                             // 创建时间（时间戳毫秒）
 	UpdatedAt  int64                       `json:"updatedAt" gorm:"autoUpdateTime:milli"` // 更新时间（时间戳毫秒）
@@ -31,6 +33,7 @@ type Agent struct {
 
 // TrafficStatsData 流量统计数据
 type TrafficStatsData struct {
+	Enabled      bool   `json:"enabled"`      // 是否启用
 	Limit        uint64 `json:"limit"`        // 流量限额(字节), 0表示不限制
 	Used         uint64 `json:"used"`         // 当前周期已使用流量(字节)
 	ResetDay     int    `json:"resetDay"`     // 流量重置日期(1-31), 0表示不自动重置

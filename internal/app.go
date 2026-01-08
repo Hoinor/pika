@@ -194,7 +194,6 @@ func setupApi(app *orz.App, components *AppComponents) {
 		publicApiWithOptionalAuth.GET("/agents/:id/metrics", components.AgentHandler.GetMetrics)
 		publicApiWithOptionalAuth.GET("/agents/:id/metrics/latest", components.AgentHandler.GetLatestMetrics)
 		publicApiWithOptionalAuth.GET("/agents/:id/network-interfaces", components.AgentHandler.GetAvailableNetworkInterfaces)
-		publicApiWithOptionalAuth.GET("/agents/:id/traffic", components.AgentHandler.GetTrafficStats)
 
 		// 监控统计数据（公开访问，支持可选认证）- 用于公共展示页面
 		publicApiWithOptionalAuth.GET("/monitors", components.MonitorHandler.GetMonitors)
@@ -244,6 +243,7 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.POST("/agents/:id/command", components.AgentHandler.SendCommand)
 
 		// 流量管理（管理员访问）
+		adminApi.GET("/agents/:id/traffic", components.AgentHandler.GetTrafficStats)
 		adminApi.PUT("/agents/:id/traffic-config", components.AgentHandler.UpdateTrafficConfig)
 		adminApi.POST("/agents/:id/traffic-reset", components.AgentHandler.ResetAgentTraffic)
 
