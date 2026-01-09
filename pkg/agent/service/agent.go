@@ -70,6 +70,7 @@ type Agent struct {
 	activeConn       *safeConn
 	collectorMu      sync.RWMutex
 	collectorManager *collector.Manager
+	metricsBuffer    *metricsBuffer
 	tamperProtector  *tamper.Protector
 	sshMonitor       *sshmonitor.Monitor
 }
@@ -77,10 +78,12 @@ type Agent struct {
 // New 创建 Agent 实例
 func New(cfg *config.Config) *Agent {
 	return &Agent{
-		cfg:             cfg,
-		idMgr:           id.NewManager(),
-		tamperProtector: tamper.NewProtector(),
-		sshMonitor:      sshmonitor.NewMonitor(),
+		cfg:              cfg,
+		idMgr:            id.NewManager(),
+		collectorManager: collector.NewManager(cfg),
+		metricsBuffer:    newMetricsBuffer(),
+		tamperProtector:  tamper.NewProtector(),
+		sshMonitor:       sshmonitor.NewMonitor(),
 	}
 }
 
@@ -89,6 +92,8 @@ func (a *Agent) Start(ctx context.Context) error {
 	// 创建可取消的 context
 	ctx, cancel := context.WithCancel(ctx)
 	a.cancel = cancel
+
+	go a.metricsLoop(ctx)
 
 	// 启动探针主循环
 	b := &backoff.Backoff{
@@ -183,13 +188,8 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 
 	slog.Info("探针注册成功，开始监控...")
 
-	// 创建采集器管理器
-	collectorManager := collector.NewManager(a.cfg)
-
 	a.setActiveConn(conn)
-	a.setCollectorManager(collectorManager)
 	defer func() {
-		a.setCollectorManager(nil)
 		a.setActiveConn(nil)
 	}()
 
@@ -215,16 +215,6 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 		if err := a.heartbeatLoop(ctx, conn, done); err != nil {
 			select {
 			case errChan <- fmt.Errorf("心跳失败: %w", err):
-			default:
-			}
-		}
-	})
-
-	// 启动指标采集循环
-	wg.Go(func() {
-		if err := a.metricsLoop(ctx, conn, collectorManager, done); err != nil {
-			select {
-			case errChan <- fmt.Errorf("数据采集失败: %w", err):
 			default:
 			}
 		}
@@ -455,9 +445,15 @@ func (a *Agent) getCollectorManager() *collector.Manager {
 }
 
 // metricsLoop 指标采集循环
-func (a *Agent) metricsLoop(ctx context.Context, conn *safeConn, manager *collector.Manager, done chan struct{}) error {
+func (a *Agent) metricsLoop(ctx context.Context) {
+	manager := a.getCollectorManager()
+	if manager == nil {
+		manager = collector.NewManager(a.cfg)
+		a.setCollectorManager(manager)
+	}
+
 	// 立即采集一次动态数据
-	if err := a.collectAndSendAllMetrics(conn, manager); err != nil {
+	if err := a.collectAndSendAllMetrics(manager); err != nil {
 		slog.Warn("初始数据采集失败", "error", err)
 	}
 
@@ -469,71 +465,91 @@ func (a *Agent) metricsLoop(ctx context.Context, conn *safeConn, manager *collec
 		select {
 		case <-ticker.C:
 			// 采集并发送各种动态指标
-			if err := a.collectAndSendAllMetrics(conn, manager); err != nil {
-				return fmt.Errorf("数据采集失败: %w", err)
+			if err := a.collectAndSendAllMetrics(manager); err != nil {
+				slog.Warn("数据采集失败", "error", err)
 			}
-		case <-done:
-			return nil
 		case <-ctx.Done():
-			return nil
+			return
 		}
 	}
 }
 
 // collectAndSendAllMetrics 采集并发送所有动态指标
-func (a *Agent) collectAndSendAllMetrics(conn *safeConn, manager *collector.Manager) error {
+func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
+	if manager == nil {
+		return fmt.Errorf("采集器未初始化")
+	}
+
+	conn := a.getActiveConn()
+	if conn != nil {
+		if sent, err := a.metricsBuffer.Flush(conn); err != nil {
+			slog.Warn("发送缓存指标失败", "error", err)
+		} else if sent > 0 {
+			slog.Info("已发送缓存指标", "count", sent)
+		}
+	}
+
+	writer := newMetricsWriter(conn, a.metricsBuffer)
 	var hasError bool
 
 	// CPU 动态指标
-	if err := manager.CollectAndSendCPU(conn); err != nil {
+	if err := manager.CollectAndSendCPU(writer); err != nil {
 		slog.Warn("发送CPU指标失败", "error", err)
 		hasError = true
 	}
 
 	// 内存动态指标
-	if err := manager.CollectAndSendMemory(conn); err != nil {
+	if err := manager.CollectAndSendMemory(writer); err != nil {
 		slog.Warn("发送内存指标失败", "error", err)
 		hasError = true
 	}
 
 	// 磁盘指标
-	if err := manager.CollectAndSendDisk(conn); err != nil {
+	if err := manager.CollectAndSendDisk(writer); err != nil {
 		slog.Warn("发送磁盘指标失败", "error", err)
 		hasError = true
 	}
 
 	// 磁盘 IO 指标
-	if err := manager.CollectAndSendDiskIO(conn); err != nil {
+	if err := manager.CollectAndSendDiskIO(writer); err != nil {
 		slog.Warn("发送磁盘IO指标失败", "error", err)
 		hasError = true
 	}
 
 	// 网络指标
-	if err := manager.CollectAndSendNetwork(conn); err != nil {
+	if err := manager.CollectAndSendNetwork(writer); err != nil {
 		slog.Warn("发送网络指标失败", "error", err)
 		hasError = true
 	}
 
 	// 网络连接统计
-	if err := manager.CollectAndSendNetworkConnection(conn); err != nil {
+	if err := manager.CollectAndSendNetworkConnection(writer); err != nil {
 		slog.Warn("发送网络连接统计失败", "error", err)
 		hasError = true
 	}
 
 	// 主机信息
-	if err := manager.CollectAndSendHost(conn); err != nil {
+	if err := manager.CollectAndSendHost(writer); err != nil {
 		slog.Warn("发送主机信息失败", "error", err)
 		hasError = true
 	}
 
 	// GPU 信息（可选）
-	if err := manager.CollectAndSendGPU(conn); err != nil {
+	if err := manager.CollectAndSendGPU(writer); err != nil {
 		slog.Info("发送GPU信息失败", "error", err)
 	}
 
 	// 温度信息（可选）
-	if err := manager.CollectAndSendTemperature(conn); err != nil {
+	if err := manager.CollectAndSendTemperature(writer); err != nil {
 		slog.Info("发送温度信息失败", "error", err)
+	}
+
+	if writer.buffered {
+		if conn == nil {
+			slog.Info("当前连接不可用，指标已写入缓存")
+		} else if writer.sendErr != nil {
+			slog.Warn("发送指标失败，已写入缓存", "error", writer.sendErr)
+		}
 	}
 
 	if hasError {

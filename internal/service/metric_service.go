@@ -51,8 +51,10 @@ func NewMetricService(logger *zap.Logger, db *gorm.DB, propertyService *Property
 }
 
 // HandleMetricData 处理指标数据
-func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, metricType string, data json.RawMessage) error {
-	now := time.Now().UnixMilli()
+func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, metricType string, data json.RawMessage, timestamp int64) error {
+	if timestamp == 0 {
+		timestamp = time.Now().UnixMilli()
+	}
 
 	// 更新内存缓存
 	latestMetrics, ok := s.latestCache.Get(agentID)
@@ -69,7 +71,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			return err
 		}
 		latestMetrics.CPU = &cpuData
-		metrics := s.convertToMetrics(agentID, metricType, &cpuData, now)
+		metrics := s.convertToMetrics(agentID, metricType, &cpuData, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeMemory:
@@ -78,7 +80,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			return err
 		}
 		latestMetrics.Memory = &memData
-		metrics := s.convertToMetrics(agentID, metricType, &memData, now)
+		metrics := s.convertToMetrics(agentID, metricType, &memData, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeDisk:
@@ -104,7 +106,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			Used:         totalUsed,
 			Free:         totalFree,
 		}
-		metrics := s.convertToMetrics(agentID, metricType, diskDataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, diskDataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeNetwork:
@@ -134,7 +136,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 				zap.String("agentId", agentID),
 				zap.Error(err))
 		}
-		metrics := s.convertToMetrics(agentID, metricType, networkDataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, networkDataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeNetworkConnection:
@@ -143,7 +145,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			return err
 		}
 		latestMetrics.NetworkConnection = &connData
-		metrics := s.convertToMetrics(agentID, metricType, &connData, now)
+		metrics := s.convertToMetrics(agentID, metricType, &connData, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeDiskIO:
@@ -151,7 +153,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		if err := json.Unmarshal(data, &diskIODataList); err != nil {
 			return err
 		}
-		metrics := s.convertToMetrics(agentID, metricType, diskIODataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, diskIODataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeHost:
@@ -170,7 +172,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			Uptime:          hostData.Uptime,
 			BootTime:        hostData.BootTime,
 			Procs:           hostData.Procs,
-			Timestamp:       now,
+			Timestamp:       timestamp,
 		}
 		latestMetrics.Host = hostMetric
 		return s.metricRepo.SaveHostMetric(ctx, hostMetric)
@@ -182,7 +184,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		}
 		// 更新缓存
 		latestMetrics.GPU = gpuDataList
-		metrics := s.convertToMetrics(agentID, metricType, gpuDataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, gpuDataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeTemperature:
@@ -192,7 +194,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		}
 		// 更新缓存
 		latestMetrics.Temp = tempDataList
-		metrics := s.convertToMetrics(agentID, metricType, tempDataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, tempDataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	case protocol.MetricTypeMonitor:
@@ -206,10 +208,10 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		// 更新缓存
 		latestMetrics.Monitors = monitorDataList
 		for _, monitorData := range monitorDataList {
-			s.updateMonitorCache(agentID, &monitorData, now)
+			s.updateMonitorCache(agentID, &monitorData, timestamp)
 		}
 
-		metrics := s.convertToMetrics(agentID, metricType, monitorDataList, now)
+		metrics := s.convertToMetrics(agentID, metricType, monitorDataList, timestamp)
 		return s.vmClient.Write(ctx, metrics)
 
 	default:

@@ -39,8 +39,9 @@ type AgentInfo struct {
 
 // MetricsPayload 指标数据包装，发送端/接收端统一使用
 type MetricsPayload struct {
-	Type MetricType  `json:"type"`
-	Data interface{} `json:"data"`
+	Type      MetricType  `json:"type"`
+	Data      interface{} `json:"data"`
+	Timestamp int64       `json:"timestamp,omitempty"` // 客户端采集时间(毫秒)
 }
 type MessageType string
 

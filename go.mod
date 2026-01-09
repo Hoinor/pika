@@ -3,6 +3,7 @@ module github.com/dushixiang/pika
 go 1.25.5
 
 require (
+	github.com/boltdb/bolt v1.3.1
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-errors/errors v1.5.1

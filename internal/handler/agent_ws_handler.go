@@ -154,7 +154,7 @@ func (h *AgentHandler) handleMetricsMessage(ctx context.Context, agentID string,
 	if err != nil {
 		return err
 	}
-	return h.metricService.HandleMetricData(ctx, agentID, string(metricsWrapper.Type), json.RawMessage(metricsData))
+	return h.metricService.HandleMetricData(ctx, agentID, string(metricsWrapper.Type), metricsData, metricsWrapper.Timestamp)
 }
 
 func (h *AgentHandler) handleCommandResponseMessage(ctx context.Context, agentID string, data json.RawMessage) error {
