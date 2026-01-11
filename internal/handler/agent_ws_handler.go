@@ -270,8 +270,11 @@ func (h *AgentHandler) sendSSHLoginConfig(conn *websocket.Conn, agentID string) 
 	if err != nil {
 		return err
 	}
-	msgData, err := json.Marshal(protocol.SSHLoginConfig{
-		Enabled: config.Enabled,
+	msgData, err := json.Marshal(protocol.OutboundMessage{
+		Type: protocol.MessageTypeSSHLoginConfig,
+		Data: protocol.SSHLoginConfig{
+			Enabled: config.Enabled,
+		},
 	})
 	if err != nil {
 		return err
