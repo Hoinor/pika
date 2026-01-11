@@ -52,6 +52,11 @@ func (h *AgentHandler) HandleWebSocket(c echo.Context) error {
 		h.logger.Error("failed to send tamper config", zap.Error(err))
 		// 配置下发失败不中断连接，只记录日志
 	}
+	// 下发SSH登录监控配置
+	if err := h.sendSSHLoginConfig(conn, agent.ID); err != nil {
+		h.logger.Error("failed to send ssh login config", zap.Error(err))
+		// 配置下发失败不中断连接，只记录日志
+	}
 
 	// 创建客户端并注册到管理器
 	client := h.newClient(agent.ID, conn)
@@ -257,5 +262,19 @@ func (h *AgentHandler) sendTamperConfig(conn *websocket.Conn, agentID string) er
 		return err
 	}
 
+	return conn.WriteMessage(websocket.TextMessage, msgData)
+}
+
+func (h *AgentHandler) sendSSHLoginConfig(conn *websocket.Conn, agentID string) error {
+	config, err := h.sshLoginService.GetConfig(context.Background(), agentID)
+	if err != nil {
+		return err
+	}
+	msgData, err := json.Marshal(protocol.SSHLoginConfig{
+		Enabled: config.Enabled,
+	})
+	if err != nil {
+		return err
+	}
 	return conn.WriteMessage(websocket.TextMessage, msgData)
 }
