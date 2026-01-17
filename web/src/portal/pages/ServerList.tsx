@@ -390,7 +390,7 @@ const ServerList = () => {
                                                 <div className="w-32 text-xs">
                                                     <div
                                                         className="flex justify-between text-gray-600 dark:text-cyan-500 mb-0.5">
-                                                        <span className={''}>流量使用</span>
+                                                        <span className={''}>TRAFFIC</span>
                                                         <span>{Math.round((server.traffic?.used || 0) / server.traffic?.limit * 100)}%</span>
                                                     </div>
                                                     <div
