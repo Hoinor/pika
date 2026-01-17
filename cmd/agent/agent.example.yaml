@@ -20,6 +20,12 @@ agent:
   # Agent 名称（可选，默认使用主机名）
   # 用于在服务端区分不同的探针
   name: ""
+  log_level: "info" # 日志级别: debug, info, warn, error
+  log_file: "agent.log" # 日志文件名（可选，默认为空，不输出到文件）
+  log_max_size: 100 # 日志文件最大大小（MB），默认 100MB
+  log_max_backups: 3 # 日志文件最大备份数，默认 3 个备份文件
+  log_max_age: 28 # 日志文件最大保存天数，默认 28 天
+  log_compress: true # 是否压缩旧日志文件，默认 true
 
 # 采集器配置
 collector:
