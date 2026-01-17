@@ -281,7 +281,7 @@ const AgentList = () => {
                 const daysLeft = Math.ceil((expireDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
                 return (
-                    <div className="flex flex-col gap-1">
+                    <div className="space-y-1">
                         <div>{expireDate.toLocaleDateString('zh-CN')}</div>
                         {isExpired ? (
                             <Tag color="red" variant={'filled'}>已过期</Tag>
@@ -304,7 +304,7 @@ const AgentList = () => {
                     return <Tag variant={'filled'}>未启用</Tag>;
                 }
                 return (
-                    <div className="flex flex-col gap-1">
+                    <div className="space-y-1">
                         <Tag color="green" variant={'filled'}>已启用</Tag>
                         {trafficStats.limit > 0 && (
                             <span className="text-xs text-gray-500">
@@ -325,7 +325,7 @@ const AgentList = () => {
                     return <Tag variant={'filled'}>未启用</Tag>;
                 }
                 return (
-                    <div className="flex flex-col gap-1">
+                    <div className="space-y-1">
                         <Tag color="green" variant={'filled'}>已启用</Tag>
                         {config.paths && config.paths.length > 0 && (
                             <span className="text-xs text-gray-500">{config.paths.length} 个路径</span>
