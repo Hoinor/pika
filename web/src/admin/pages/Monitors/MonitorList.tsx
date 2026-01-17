@@ -20,7 +20,7 @@ const MonitorList = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchValue, setSearchValue] = useState('');
 
-    const current = Number(searchParams.get('page')) || 1;
+    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
     const pageSize = Number(searchParams.get('pageSize')) || 10;
     const keyword = searchParams.get('keyword') ?? '';
 
@@ -28,14 +28,12 @@ const MonitorList = () => {
         data: monitorPaging,
         isLoading,
         isFetching,
-        isError: monitorError,
-        error: monitorErrorDetail,
         refetch,
     } = useQuery({
-        queryKey: ['admin', 'monitors', current, pageSize, keyword],
+        queryKey: ['admin', 'monitors', pageIndex, pageSize, keyword],
         queryFn: async () => {
             const response = await listMonitors(
-                current,
+                pageIndex,
                 pageSize,
                 keyword || undefined,
             );
@@ -53,12 +51,6 @@ const MonitorList = () => {
             message.error(getErrorMessage(error, '删除失败'));
         },
     });
-
-    useEffect(() => {
-        if (monitorError && monitorErrorDetail) {
-            message.error(getErrorMessage(monitorErrorDetail, '获取监控列表失败'));
-        }
-    }, [monitorError, monitorErrorDetail, message]);
 
     useEffect(() => {
         setSearchValue(keyword);
@@ -91,7 +83,7 @@ const MonitorList = () => {
 
     const handleTableChange = (nextPagination: TablePaginationConfig) => {
         const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('page', String(nextPagination.current || 1));
+        nextParams.set('pageIndex', String(nextPagination.current || 1));
         nextParams.set('pageSize', String(nextPagination.pageSize || pageSize));
         setSearchParams(nextParams);
     };
@@ -105,7 +97,7 @@ const MonitorList = () => {
         } else {
             nextParams.delete('keyword');
         }
-        nextParams.set('page', '1');
+        nextParams.set('pageIndex', '1');
         nextParams.set('pageSize', String(pageSize));
         setSearchParams(nextParams);
     };
@@ -278,7 +270,7 @@ const MonitorList = () => {
                 loading={isLoading || isFetching}
                 rowKey="id"
                 pagination={{
-                    current,
+                    current: pageIndex,
                     pageSize,
                     total,
                     showSizeChanger: true,

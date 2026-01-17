@@ -1,8 +1,9 @@
-import React, {useState, useEffect} from 'react';
+import React from 'react';
+import {useSearchParams} from 'react-router-dom';
 import {App, Button, Table, Tag, Tooltip} from 'antd';
-import type {ColumnsType} from 'antd/es/table';
+import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
 import {Terminal} from 'lucide-react';
-import {useMutation} from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import type {SSHLoginEvent} from '@/types';
 import {deleteSSHLoginEvents, getSSHLoginEvents} from '@/api/agent';
 import {getErrorMessage} from '@/lib/utils';
@@ -14,18 +15,11 @@ interface SSHLoginEventsProps {
 
 const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
     const {message, modal} = App.useApp();
-    const [loading, setLoading] = useState(false);
-    const [dataSource, setDataSource] = useState<SSHLoginEvent[]>([]);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 20,
-        total: 0,
-    });
-    const [searchParams, setSearchParams] = useState({
-        username: '',
-        ip: '',
-        status: '',
-    });
+    const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
+    const pageSize = Number(searchParams.get('pageSize')) || 20;
 
     // 定义表格列
     const columns: ColumnsType<SSHLoginEvent> = [
@@ -99,42 +93,33 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
         },
     ];
 
-    // 加载数据
-    const loadData = async (page: number = pagination.current, pageSize: number = pagination.pageSize) => {
-        setLoading(true);
-        try {
-            const response = await getSSHLoginEvents(agentId, {
-                pageIndex: page,
-                pageSize: pageSize,
-                username: searchParams.username || undefined,
-                ip: searchParams.ip || undefined,
-                status: searchParams.status || undefined,
-                sortField: 'createdAt',
-                sortOrder: 'descend',
-            });
-            setDataSource(response.items || []);
-            setPagination({
-                current: page,
-                pageSize: pageSize,
-                total: response.total || 0,
-            });
-        } catch (error) {
-            console.error('Failed to load SSH login events:', error);
-            message.error(getErrorMessage(error, '加载失败'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 初始加载
-    useEffect(() => {
-        loadData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [agentId]);
+    const {
+        data: eventsPaging,
+        isLoading,
+        isFetching,
+    } = useQuery({
+        queryKey: [
+            'admin',
+            'agents',
+            'ssh-login-events',
+            agentId,
+            pageIndex,
+            pageSize,
+        ],
+        queryFn: () => getSSHLoginEvents(agentId, {
+            pageIndex,
+            pageSize,
+            sortField: 'createdAt',
+            sortOrder: 'descend',
+        }),
+    });
 
     // 处理表格变化
-    const handleTableChange = (newPagination: any) => {
-        loadData(newPagination.current, newPagination.pageSize);
+    const handleTableChange = (newPagination: TablePaginationConfig) => {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('pageIndex', String(newPagination.current || 1));
+        nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
+        setSearchParams(nextParams);
     };
 
     // 删除所有事件 mutation
@@ -142,7 +127,11 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
         mutationFn: () => deleteSSHLoginEvents(agentId),
         onSuccess: () => {
             message.success('所有事件已删除');
-            loadData(1);
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set('pageIndex', '1');
+            nextParams.set('pageSize', String(pageSize));
+            setSearchParams(nextParams);
+            queryClient.invalidateQueries({queryKey: ['admin', 'agents', 'ssh-login-events', agentId]});
         },
         onError: (error: unknown) => {
             console.error('Failed to delete SSH login events:', error);
@@ -175,11 +164,13 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
 
             <Table<SSHLoginEvent>
                 columns={columns}
-                dataSource={dataSource}
-                loading={loading}
+                dataSource={eventsPaging?.items || []}
+                loading={isLoading || isFetching}
                 rowKey="id"
                 pagination={{
-                    ...pagination,
+                    current: pageIndex,
+                    pageSize,
+                    total: eventsPaging?.total || 0,
                     showSizeChanger: true,
                     showTotal: (total) => `共 ${total} 条`,
                 }}

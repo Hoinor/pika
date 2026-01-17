@@ -44,7 +44,7 @@ const AgentList = () => {
         status: status || undefined,
     };
 
-    const {data: tags = [], isError: tagsError, error: tagsErrorDetail} = useQuery({
+    const {data: tags = []} = useQuery({
         queryKey: ['admin', 'agents', 'tags'],
         queryFn: async () => {
             const response = await getTags();
@@ -56,8 +56,6 @@ const AgentList = () => {
         data: agentPaging,
         isLoading,
         isFetching,
-        isError: agentsError,
-        error: agentsErrorDetail,
         refetch,
     } = useQuery({
         queryKey: ['admin', 'agents', pageIndex, pageSize, filters.keyword, filters.status],
@@ -82,18 +80,6 @@ const AgentList = () => {
             messageApi.error(getErrorMessage(error, '删除探针失败'));
         },
     });
-
-    useEffect(() => {
-        if (tagsError && tagsErrorDetail) {
-            messageApi.error(getErrorMessage(tagsErrorDetail, '加载标签失败'));
-        }
-    }, [tagsError, tagsErrorDetail, messageApi]);
-
-    useEffect(() => {
-        if (agentsError && agentsErrorDetail) {
-            messageApi.error(getErrorMessage(agentsErrorDetail, '获取探针列表失败'));
-        }
-    }, [agentsError, agentsErrorDetail, messageApi]);
 
     useEffect(() => {
         searchForm.setFieldsValue({
@@ -137,7 +123,7 @@ const AgentList = () => {
 
     const handleTableChange = (nextPagination: TablePaginationConfig) => {
         const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('page', String(nextPagination.current || 1));
+        nextParams.set('pageIndex', String(nextPagination.current || 1));
         nextParams.set('pageSize', String(nextPagination.pageSize || pageSize));
         setSearchParams(nextParams);
     };

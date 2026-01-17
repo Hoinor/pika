@@ -82,8 +82,13 @@ const AgentDetail = () => {
 
     useEffect(() => {
         // 同步 activeTab 到 URL
-        setSearchParams({tab: activeTab});
-    }, [activeTab]);
+        const nextParams = new URLSearchParams(searchParams);
+        if (nextParams.get('tab') === activeTab) {
+            return;
+        }
+        nextParams.set('tab', activeTab);
+        setSearchParams(nextParams);
+    }, [activeTab, searchParams, setSearchParams]);
 
     if (loading && !agent) {
         return (

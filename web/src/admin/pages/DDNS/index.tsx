@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {App, Button, Divider, Input, Space, Table, Tag, Tooltip} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
@@ -11,13 +11,12 @@ import {getErrorMessage} from '@/lib/utils';
 import DDNSModal from './DDNSModal.tsx';
 import RecordsDrawer from './RecordsDrawer.tsx';
 import DNSProviderModal from './DNSProviderModal.tsx';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 
 const DDNSPage = () => {
     const {message, modal} = App.useApp();
-    const [loading, setLoading] = useState(false);
-    const [dataSource, setDataSource] = useState<DDNSConfig[]>([]);
+    const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [total, setTotal] = useState(0);
     const [searchValue, setSearchValue] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [recordsDrawerOpen, setRecordsDrawerOpen] = useState(false);
@@ -31,37 +30,30 @@ const DDNSPage = () => {
         huaweicloud: '华为云',
     };
 
-    const current = Number(searchParams.get('page')) || 1;
+    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
     const pageSize = Number(searchParams.get('pageSize')) || 10;
     const keyword = searchParams.get('keyword') ?? '';
 
-    // 加载数据
-    const loadData = async (page: number, size: number, kw: string) => {
-        setLoading(true);
-        try {
-            const response = await getDDNSConfigs(page, size, kw || undefined);
-            setDataSource(response.data.items || []);
-            setTotal(response.data.total || 0);
-        } catch (error: unknown) {
-            message.error(getErrorMessage(error, '获取 DDNS 配置列表失败'));
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: ddnsPaging,
+        isLoading,
+        isFetching,
+    } = useQuery({
+        queryKey: ['admin', 'ddns', pageIndex, pageSize, keyword],
+        queryFn: async () => {
+            const response = await getDDNSConfigs(pageIndex, pageSize, keyword || undefined);
+            return response.data;
+        },
+    });
 
     useEffect(() => {
         setSearchValue(keyword);
     }, [keyword]);
 
-    useEffect(() => {
-        loadData(current, pageSize, keyword);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [current, pageSize, keyword]);
-
     // 处理表格变化
     const handleTableChange = (newPagination: any) => {
         const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('page', String(newPagination.current || 1));
+        nextParams.set('pageIndex', String(newPagination.current || 1));
         nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
         setSearchParams(nextParams);
     };
@@ -76,7 +68,7 @@ const DDNSPage = () => {
         } else {
             nextParams.delete('keyword');
         }
-        nextParams.set('page', '1');
+        nextParams.set('pageIndex', '1');
         nextParams.set('pageSize', String(pageSize));
         setSearchParams(nextParams);
     };
@@ -105,7 +97,7 @@ const DDNSPage = () => {
                 await enableDDNSConfig(config.id);
                 message.success('已启用');
             }
-            loadData(current, pageSize, keyword);
+            queryClient.invalidateQueries({queryKey: ['admin', 'ddns']});
         } catch (error: unknown) {
             message.error(getErrorMessage(error, '操作失败'));
         }
@@ -120,7 +112,7 @@ const DDNSPage = () => {
                 try {
                     await deleteDDNSConfig(config.id);
                     message.success('删除成功');
-                    loadData(current, pageSize, keyword);
+                    queryClient.invalidateQueries({queryKey: ['admin', 'ddns']});
                 } catch (error: unknown) {
                     message.error(getErrorMessage(error, '删除失败'));
                 }
@@ -306,13 +298,13 @@ const DDNSPage = () => {
 
             <Table<DDNSConfig>
                 columns={columns}
-                dataSource={dataSource}
-                loading={loading}
+                dataSource={ddnsPaging?.items || []}
+                loading={isLoading || isFetching}
                 rowKey="id"
                 pagination={{
-                    current,
+                    current: pageIndex,
                     pageSize,
-                    total,
+                    total: ddnsPaging?.total || 0,
                     showSizeChanger: true,
                 }}
                 onChange={handleTableChange}
@@ -328,7 +320,7 @@ const DDNSPage = () => {
                 onSuccess={() => {
                     setModalOpen(false);
                     setSelectedConfig(null);
-                    loadData(current, pageSize, keyword);
+                    queryClient.invalidateQueries({queryKey: ['admin', 'ddns']});
                 }}
             />
 
@@ -347,7 +339,7 @@ const DDNSPage = () => {
                 open={providerModalOpen}
                 onCancel={() => setProviderModalOpen(false)}
                 onSuccess={() => {
-                    loadData(current, pageSize, keyword);
+                    queryClient.invalidateQueries({queryKey: ['admin', 'ddns']});
                 }}
             />
         </div>

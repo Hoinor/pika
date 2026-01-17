@@ -12,10 +12,10 @@ export interface DDNSRecordListResponse {
 }
 
 // 获取 DDNS 配置列表（分页）
-export const getDDNSConfigs = (page: number, size: number, name?: string, agentId?: string) => {
+export const getDDNSConfigs = (pageIndex: number, pageSize: number, name?: string, agentId?: string) => {
     const params = new URLSearchParams();
-    params.append('page', page.toString());
-    params.append('size', size.toString());
+    params.append('pageIndex', pageIndex.toString());
+    params.append('pageSize', pageSize.toString());
     if (name) {
         params.append('name', name);
     }

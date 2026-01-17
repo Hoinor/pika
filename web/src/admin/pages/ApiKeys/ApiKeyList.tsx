@@ -1,7 +1,7 @@
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {App, Button, Divider, Input, Popconfirm, Space, Table, Tag} from 'antd';
-import type {ColumnsType} from 'antd/es/table';
+import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
 import {Copy, Edit, Eye, EyeOff, Plus, Power, PowerOff, RefreshCw, Trash2} from 'lucide-react';
 import {deleteApiKey, disableApiKey, enableApiKey, listApiKeys} from '@/api/apiKey.ts';
 import type {ApiKey} from '@/types';
@@ -11,13 +11,12 @@ import {PageHeader} from '@admin/components';
 import copy from 'copy-to-clipboard';
 import ApiKeyModal from './ApiKeyModal';
 import ShowApiKeyModal from './ShowApiKeyModal';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 
 const ApiKeyList = () => {
     const {message: messageApi} = App.useApp();
-    const [loading, setLoading] = useState(false);
-    const [dataSource, setDataSource] = useState<ApiKey[]>([]);
+    const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [total, setTotal] = useState(0);
     const [searchValue, setSearchValue] = useState('');
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingApiKeyId, setEditingApiKeyId] = useState<string | undefined>(undefined);
@@ -25,37 +24,59 @@ const ApiKeyList = () => {
     const [showApiKeyModal, setShowApiKeyModal] = useState(false);
     const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
 
-    // 加载数据
-    const current = Number(searchParams.get('page')) || 1;
+    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
     const pageSize = Number(searchParams.get('pageSize')) || 10;
     const name = searchParams.get('name') ?? '';
 
-    const loadData = async (page: number, size: number, keyword: string) => {
-        setLoading(true);
-        try {
-            const response = await listApiKeys(page, size, keyword || undefined);
-            setDataSource(response.data.items || []);
-            setTotal(response.data.total || 0);
-        } catch (error: unknown) {
-            messageApi.error(getErrorMessage(error, '获取API密钥列表失败'));
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: apiKeyPaging,
+        isLoading,
+        isFetching,
+        refetch,
+    } = useQuery({
+        queryKey: ['admin', 'api-keys', pageIndex, pageSize, name],
+        queryFn: async () => {
+            const response = await listApiKeys(pageIndex, pageSize, name || undefined);
+            return response.data;
+        },
+    });
+
+    const toggleMutation = useMutation({
+        mutationFn: async (apiKey: ApiKey) => {
+            if (apiKey.enabled) {
+                await disableApiKey(apiKey.id);
+            } else {
+                await enableApiKey(apiKey.id);
+            }
+        },
+        onSuccess: (_, apiKey) => {
+            messageApi.success(apiKey.enabled ? 'API密钥已禁用' : 'API密钥已启用');
+            queryClient.invalidateQueries({queryKey: ['admin', 'api-keys']});
+        },
+        onError: (error: unknown) => {
+            messageApi.error(getErrorMessage(error, '操作失败'));
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => deleteApiKey(id),
+        onSuccess: () => {
+            messageApi.success('删除成功');
+            queryClient.invalidateQueries({queryKey: ['admin', 'api-keys']});
+        },
+        onError: (error: unknown) => {
+            messageApi.error(getErrorMessage(error, '删除失败'));
+        },
+    });
 
     useEffect(() => {
         setSearchValue(name);
     }, [name]);
 
-    useEffect(() => {
-        loadData(current, pageSize, name);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [current, pageSize, name]);
-
     // 处理表格变化
-    const handleTableChange = (newPagination: any) => {
+    const handleTableChange = (newPagination: TablePaginationConfig) => {
         const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('page', String(newPagination.current || 1));
+        nextParams.set('pageIndex', String(newPagination.current || 1));
         nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
         setSearchParams(nextParams);
     };
@@ -70,7 +91,7 @@ const ApiKeyList = () => {
         } else {
             nextParams.delete('name');
         }
-        nextParams.set('page', '1');
+        nextParams.set('pageIndex', '1');
         nextParams.set('pageSize', String(pageSize));
         setSearchParams(nextParams);
     };
@@ -85,29 +106,12 @@ const ApiKeyList = () => {
         setIsModalVisible(true);
     };
 
-    const handleToggleEnabled = async (apiKey: ApiKey) => {
-        try {
-            if (apiKey.enabled) {
-                await disableApiKey(apiKey.id);
-                messageApi.success('API密钥已禁用');
-            } else {
-                await enableApiKey(apiKey.id);
-                messageApi.success('API密钥已启用');
-            }
-            loadData(current, pageSize, name);
-        } catch (error: unknown) {
-            messageApi.error(getErrorMessage(error, '操作失败'));
-        }
+    const handleToggleEnabled = (apiKey: ApiKey) => {
+        toggleMutation.mutate(apiKey);
     };
 
-    const handleDelete = async (id: string) => {
-        try {
-            await deleteApiKey(id);
-            messageApi.success('删除成功');
-            loadData(current, pageSize, name);
-        } catch (error: unknown) {
-            messageApi.error(getErrorMessage(error, '删除失败'));
-        }
+    const handleDelete = (id: string) => {
+        deleteMutation.mutate(id);
     };
 
     const handleModalSuccess = (apiKey?: ApiKey) => {
@@ -117,7 +121,7 @@ const ApiKeyList = () => {
             setNewApiKeyData(apiKey);
             setShowApiKeyModal(true);
         }
-        loadData(current, pageSize, name);
+        queryClient.invalidateQueries({queryKey: ['admin', 'api-keys']});
     };
 
     const handleCopyApiKey = (key: string) => {
@@ -207,9 +211,7 @@ const ApiKeyList = () => {
                     key="edit"
                     type="link"
                     size="small"
-                    icon={<Edit size={14}/>}
                     onClick={() => handleEdit(record)}
-                    style={{padding: 0, margin: 0}}
                 >
                     编辑
                 </Button>,
@@ -217,9 +219,7 @@ const ApiKeyList = () => {
                     key="toggle"
                     type="link"
                     size="small"
-                    icon={record.enabled ? <PowerOff size={14}/> : <Power size={14}/>}
                     onClick={() => handleToggleEnabled(record)}
-                    style={{padding: 0, margin: 0}}
                 >
                     {record.enabled ? '禁用' : '启用'}
                 </Button>,
@@ -233,8 +233,7 @@ const ApiKeyList = () => {
                 >
                     <Button type="link"
                             size="small"
-                            danger icon={<Trash2 size={14}/>}
-                            style={{padding: 0, margin: 0}}
+                            danger
                     >
                         删除
                     </Button>
@@ -260,7 +259,7 @@ const ApiKeyList = () => {
                         key: 'refresh',
                         label: '刷新',
                         icon: <RefreshCw size={16}/>,
-                        onClick: () => loadData(current, pageSize, name),
+                        onClick: () => refetch(),
                     },
                 ]}
             />
@@ -286,13 +285,13 @@ const ApiKeyList = () => {
 
             <Table<ApiKey>
                 columns={columns}
-                dataSource={dataSource}
-                loading={loading}
+                dataSource={apiKeyPaging?.items || []}
+                loading={isLoading || isFetching}
                 rowKey="id"
                 pagination={{
-                    current,
+                    current: pageIndex,
                     pageSize,
-                    total,
+                    total: apiKeyPaging?.total || 0,
                     showSizeChanger: true,
                 }}
                 onChange={handleTableChange}

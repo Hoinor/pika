@@ -1,6 +1,7 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
+import {useSearchParams} from 'react-router-dom';
 import {App, Divider, Select, Space, Table, Tag} from 'antd';
-import type {ColumnsType} from 'antd/es/table';
+import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
 import {Trash2} from 'lucide-react';
 import {clearAlertRecords, getAlertRecords} from '@/api/alert.ts';
 import type {AlertRecord} from '@/types';
@@ -8,18 +9,16 @@ import dayjs from 'dayjs';
 import {getErrorMessage} from '@/lib/utils';
 import {PageHeader} from '@admin/components';
 import {getAgentPaging} from '@/api/agent.ts';
-import {useQuery} from '@tanstack/react-query';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 
 const AlertRecordList = () => {
     const {message: messageApi, modal} = App.useApp();
+    const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-    const [loading, setLoading] = useState(false);
-    const [dataSource, setDataSource] = useState<AlertRecord[]>([]);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 20,
-        total: 0,
-    });
+
+    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
+    const pageSize = Number(searchParams.get('pageSize')) || 20;
 
     // 使用 react-query 获取探针列表
     const {data: agentsData} = useQuery({
@@ -96,33 +95,30 @@ const AlertRecordList = () => {
         value: agent.id,
     })) || [];
 
-    // 加载数据
-    const loadData = async (page: number = pagination.current, pageSize: number = pagination.pageSize, agentId: string = selectedAgentId) => {
-        setLoading(true);
-        try {
-            const result = await getAlertRecords(page, pageSize, agentId || undefined);
-            setDataSource(result.items || []);
-            setPagination({
-                current: page,
-                pageSize: pageSize,
-                total: result.total || 0,
-            });
-        } catch (error) {
-            messageApi.error(getErrorMessage(error, '获取告警记录失败'));
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: alertPaging,
+        isLoading,
+        isFetching,
+    } = useQuery({
+        queryKey: ['admin', 'alert-records', pageIndex, pageSize, selectedAgentId],
+        queryFn: () => getAlertRecords(pageIndex, pageSize, selectedAgentId || undefined),
+    });
 
     // 处理表格变化
-    const handleTableChange = (newPagination: any) => {
-        loadData(newPagination.current, newPagination.pageSize);
+    const handleTableChange = (newPagination: TablePaginationConfig) => {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('pageIndex', String(newPagination.current || 1));
+        nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
+        setSearchParams(nextParams);
     };
 
     // 处理探针筛选变化
     const handleAgentChange = (value: string) => {
         setSelectedAgentId(value || '');
-        loadData(1, pagination.pageSize, value || '');
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('pageIndex', '1');
+        nextParams.set('pageSize', String(pageSize));
+        setSearchParams(nextParams);
     };
 
     // 清空记录
@@ -139,19 +135,13 @@ const AlertRecordList = () => {
                 try {
                     await clearAlertRecords(selectedAgentId || undefined);
                     messageApi.success('清空成功');
-                    loadData();
+                    queryClient.invalidateQueries({queryKey: ['admin', 'alert-records']});
                 } catch (error: unknown) {
                     messageApi.error(getErrorMessage(error, '清空失败'));
                 }
             },
         });
     };
-
-    // 初始加载
-    useEffect(() => {
-        loadData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const columns: ColumnsType<AlertRecord> = [
         {
@@ -267,15 +257,15 @@ const AlertRecordList = () => {
                     <Select
                         placeholder="选择探针"
                         allowClear
-                        showSearch
+                        showSearch={{
+                            filterOption: (inputValue, option) =>
+                                (option?.label?.toString() ?? '')
+                                    .toLowerCase()
+                                    .includes(inputValue.toLowerCase()),
+                        }}
                         style={{width: 200}}
                         value={selectedAgentId || undefined}
                         onChange={handleAgentChange}
-                        filterOption={(input, option) =>
-                            (option?.label?.toString() ?? '')
-                                .toLowerCase()
-                                .includes(input.toLowerCase())
-                        }
                         options={agentOptions}
                     />
                 </Space>
@@ -283,11 +273,14 @@ const AlertRecordList = () => {
 
             <Table<AlertRecord>
                 columns={columns}
-                dataSource={dataSource}
-                loading={loading}
+                dataSource={alertPaging?.items || []}
+                loading={isLoading || isFetching}
                 rowKey="id"
+                size={'small'}
                 pagination={{
-                    ...pagination,
+                    current: pageIndex,
+                    pageSize,
+                    total: alertPaging?.total || 0,
                     showSizeChanger: true,
                     showQuickJumper: true,
                     pageSizeOptions: ['10', '20', '50', '100'],

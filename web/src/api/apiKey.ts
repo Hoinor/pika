@@ -12,9 +12,9 @@ export const generateApiKey = (data: GenerateApiKeyRequest) => {
 };
 
 // 获取 API Key 列表
-export const listApiKeys = (page: number = 1, pageSize: number = 10, name?: string) => {
+export const listApiKeys = (pageIndex: number = 1, pageSize: number = 10, name?: string) => {
     const params = new URLSearchParams();
-    params.append('page', page.toString());
+    params.append('pageIndex', pageIndex.toString());
     params.append('pageSize', pageSize.toString());
     if (name) {
         params.append('name', name);
