@@ -21,6 +21,7 @@ import type {User} from '@/types';
 import {cn} from '@/lib/utils';
 import {getServerVersion, type VersionInfo} from "@/api/version.ts";
 import {flushSync} from "react-dom";
+import {ScrollArea} from "@radix-ui/react-scroll-area";
 
 interface NavItem {
     key: string;
@@ -294,22 +295,21 @@ const AdminLayout = () => {
                             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-slate-100">管理面板</p>
                         </div>
                         {/* 菜单区域 */}
-                        <nav className="flex-1 overflow-y-auto px-3 pb-6">
-                            <div className="space-y-1">
-                                {menuItems.map((item) => {
-                                    const isActive = location.pathname.startsWith(item.path);
-                                    return (
-                                        <button
-                                            key={item.key}
-                                            type="button"
-                                            onClick={() => handleNavigate(item)}
-                                            className={cn(
-                                                'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all cursor-pointer',
-                                                isActive
-                                                    ? 'bg-gradient-to-r from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                    : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
-                                            )}
-                                        >
+                        <ScrollArea className="px-3 pb-6 space-y-1 h-[calc(100vh-228px)]">
+                            {menuItems.map((item) => {
+                                const isActive = location.pathname.startsWith(item.path);
+                                return (
+                                    <button
+                                        key={item.key}
+                                        type="button"
+                                        onClick={() => handleNavigate(item)}
+                                        className={cn(
+                                            'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all cursor-pointer',
+                                            isActive
+                                                ? 'bg-gradient-to-r from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                        )}
+                                    >
                                             <span
                                                 className={cn(
                                                     'flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 shadow-sm',
@@ -318,15 +318,14 @@ const AdminLayout = () => {
                                             >
                                                 {item.icon}
                                             </span>
-                                            <span className="truncate font-medium">{item.label}</span>
-                                            {isActive &&
-                                                <span
-                                                    className="ml-auto text-[10px] uppercase text-blue-500 dark:text-blue-400">当前</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </nav>
+                                        <span className="truncate font-medium">{item.label}</span>
+                                        {isActive &&
+                                            <span
+                                                className="ml-auto text-[10px] uppercase text-blue-500 dark:text-blue-400">当前</span>}
+                                    </button>
+                                );
+                            })}
+                        </ScrollArea>
 
                         {/* 版本信息 */}
                         {version && (
