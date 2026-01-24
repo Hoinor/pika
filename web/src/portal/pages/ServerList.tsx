@@ -82,8 +82,8 @@ const ServerList = () => {
     const {data: agents = [], isLoading} = useQuery<AgentWithMetrics[]>({
         queryKey: ['agents', 'online'],
         queryFn: async () => {
-            const response = await listAgents();
-            return (response.data.items || []) as AgentWithMetrics[];
+            const agents = await listAgents();
+            return (agents || []) as AgentWithMetrics[];
         },
         refetchInterval: 5000,
     });

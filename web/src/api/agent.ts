@@ -10,11 +10,6 @@ import type {
 } from '@/types';
 import qs from "qs";
 
-export interface ListAgentsResponse {
-    items: Agent[];
-    total: number;
-}
-
 export interface GetAgentMetricsRequest {
     agentId: string;
     type: 'cpu' | 'memory' | 'disk' | 'network' | 'network_connection' | 'disk_io' | 'gpu' | 'temperature' | 'monitor';
@@ -44,28 +39,12 @@ export interface GetAgentMetricsResponse {
 }
 
 // 管理员接口 - 获取所有探针（需要认证）
-export const getAgentPaging = (
-    pageIndex: number = 1,
-    pageSize: number = 10,
-    keyword?: string,
-    status?: string,
-) => {
-    const params = new URLSearchParams();
-    params.append('pageIndex', pageIndex.toString());
-    params.append('pageSize', pageSize.toString());
-    if (keyword) {
-        params.append('keyword', keyword);
-    }
-    if (status) {
-        params.append('status', status);
-    }
-    params.set('sortOrder', 'descend');
-    params.set('sortField', 'weight');
-    return get<ListAgentsResponse>(`/admin/agents?${params.toString()}`);
+export const listAgentsByAdmin = () => {
+    return get<Agent[]>('/admin/agents');
 };
 
 export const listAgents = () => {
-    return get<ListAgentsResponse>('/agents');
+    return get<Agent[]>('/agents');
 };
 
 export const getAgent = (id: string) => {

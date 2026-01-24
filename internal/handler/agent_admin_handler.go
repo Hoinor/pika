@@ -3,36 +3,47 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
+	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/protocol"
 	"github.com/go-orz/orz"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
-// Paging 探针分页查询
+func SortAgents(agents []models.Agent) {
+	// 复用排序逻辑
+	slices.SortFunc(agents, func(a, b models.Agent) int {
+		// 先按照状态排序
+		if a.Status != b.Status {
+			return b.Status - a.Status
+		}
+		// 再按权重排序（数字越大越靠前）
+		if a.Weight != b.Weight {
+			return b.Weight - a.Weight
+		}
+		// 权重相同时按名称排序
+		return strings.Compare(a.Name, b.Name)
+	})
+}
+
+// Paging 探针分页查询（返回完整列表，前端实现过滤）
 func (h *AgentHandler) Paging(c echo.Context) error {
-	status := c.QueryParam("status")
-
-	pr := orz.GetPageRequest(c, "weight", "name")
-
-	builder := orz.NewPageBuilder(h.agentService.AgentRepo.Repository).
-		PageRequest(pr).
-		Keyword([]string{"name", "hostname", "ip", "ipv4", "ipv6"}, c.QueryParam("keyword"))
-	// 处理状态筛选
-	if status == "online" {
-		builder.Equal("status", "1")
-	} else if status == "offline" {
-		builder.Equal("status", "0")
-	}
-
 	ctx := c.Request().Context()
-	page, err := builder.Execute(ctx)
+
+	// 获取所有探针（管理员接口）
+	agents, err := h.agentService.AgentRepo.FindAll(ctx)
 	if err != nil {
 		return err
 	}
-	return orz.Ok(c, page)
+
+	// 排序
+	SortAgents(agents)
+
+	return orz.Ok(c, agents)
 }
 
 // GetForAdmin 获取探针详情（管理员接口，显示完整信息）

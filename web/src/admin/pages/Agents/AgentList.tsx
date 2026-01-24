@@ -1,12 +1,12 @@
-import {useEffect, useState} from 'react';
-import {Link, useNavigate, useSearchParams} from 'react-router-dom';
+import {useMemo, useState} from 'react';
+import {Link, useNavigate} from 'react-router-dom';
 import type {MenuProps} from 'antd';
 import {App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag} from 'antd';
-import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
+import type {ColumnsType} from 'antd/es/table';
 import {Edit, Eye, EyeOff, FileWarning, Lock, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2} from 'lucide-react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import {deleteAgent, getAgentPaging, getTags} from '@/api/agent.ts';
+import {deleteAgent, getTags, listAgentsByAdmin} from '@/api/agent.ts';
 import type {Agent} from '@/types';
 import {getErrorMessage} from '@/lib/utils';
 import {PageHeader} from '@admin/components';
@@ -16,18 +16,12 @@ import BatchTamperProtectionModal from './BatchTamperProtectionModal';
 import BatchSSHLoginConfigModal from './BatchSSHLoginConfigModal';
 import BatchVisibilityModal from './BatchVisibilityModal';
 
-interface AgentFilters {
-    keyword?: string;
-    status?: string;
-}
-
 const AgentList = () => {
     const navigate = useNavigate();
     const {message: messageApi, modal} = App.useApp();
     const queryClient = useQueryClient();
 
     const [searchForm] = Form.useForm();
-    const [searchParams, setSearchParams] = useSearchParams();
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [batchTagModalVisible, setBatchTagModalVisible] = useState(false);
@@ -36,15 +30,10 @@ const AgentList = () => {
     const [batchVisibilityModalVisible, setBatchVisibilityModalVisible] = useState(false);
     const [editingAgentId, setEditingAgentId] = useState<string | undefined>(undefined);
 
-    const pageIndex = Number(searchParams.get('pageIndex')) || 1;
-    const pageSize = Number(searchParams.get('pageSize')) || 10;
-    const keyword = searchParams.get('keyword') ?? '';
-    const status = searchParams.get('status') ?? '';
-
-    const filters: AgentFilters = {
-        keyword: keyword || undefined,
-        status: status || undefined,
-    };
+    // 过滤条件
+    const [keyword, setKeyword] = useState('');
+    const [status, setStatus] = useState<string | undefined>(undefined);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const {data: tags = []} = useQuery({
         queryKey: ['admin', 'agents', 'tags'],
@@ -55,19 +44,14 @@ const AgentList = () => {
     });
 
     const {
-        data: agentPaging,
+        data: agents = [],
         isLoading,
         isFetching,
         refetch,
     } = useQuery({
-        queryKey: ['admin', 'agents', pageIndex, pageSize, filters.keyword, filters.status],
+        queryKey: ['admin', 'agents'],
         queryFn: async () => {
-            const response = await getAgentPaging(
-                pageIndex,
-                pageSize,
-                keyword,
-                filters.status,
-            );
+            const response = await listAgentsByAdmin();
             return response.data;
         },
     });
@@ -83,51 +67,17 @@ const AgentList = () => {
         },
     });
 
-    useEffect(() => {
-        searchForm.setFieldsValue({
-            keyword: keyword || undefined,
-            status: status || undefined,
-        });
-    }, [searchForm, keyword, status]);
-
     const handleSearch = () => {
         const values = searchForm.getFieldsValue();
-        const nextParams = new URLSearchParams(searchParams);
-        const nextKeyword = values.keyword?.trim();
-        const nextStatus = values.status;
-
-        if (nextKeyword) {
-            nextParams.set('keyword', nextKeyword);
-        } else {
-            nextParams.delete('keyword');
-        }
-
-        if (nextStatus) {
-            nextParams.set('status', nextStatus);
-        } else {
-            nextParams.delete('status');
-        }
-
-        nextParams.set('pageIndex', '1');
-        nextParams.set('pageSize', String(pageSize));
-        setSearchParams(nextParams);
+        setKeyword(values.keyword?.trim() || '');
+        setStatus(values.status);
     };
 
     const handleReset = () => {
         searchForm.resetFields();
-        const nextParams = new URLSearchParams(searchParams);
-        nextParams.delete('keyword');
-        nextParams.delete('status');
-        nextParams.set('pageIndex', '1');
-        nextParams.set('pageSize', String(pageSize));
-        setSearchParams(nextParams);
-    };
-
-    const handleTableChange = (nextPagination: TablePaginationConfig) => {
-        const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('pageIndex', String(nextPagination.current || 1));
-        nextParams.set('pageSize', String(nextPagination.pageSize || pageSize));
-        setSearchParams(nextParams);
+        setKeyword('');
+        setStatus(undefined);
+        setSelectedTags([]);
     };
 
     const handleEdit = (agent: Agent) => {
@@ -191,6 +141,40 @@ const AgentList = () => {
         }
         setBatchVisibilityModalVisible(true);
     };
+
+    // 前端过滤数据
+    const filteredAgents = useMemo(() => {
+        let result = agents || [];
+
+        // 关键字过滤
+        if (keyword) {
+            const lowerKeyword = keyword.toLowerCase();
+            result = result.filter((agent: Agent) => {
+                return (
+                    agent.name?.toLowerCase().includes(lowerKeyword) ||
+                    agent.hostname?.toLowerCase().includes(lowerKeyword) ||
+                    agent.ip?.toLowerCase().includes(lowerKeyword) ||
+                    agent.ipv4?.toLowerCase().includes(lowerKeyword) ||
+                    agent.ipv6?.toLowerCase().includes(lowerKeyword)
+                );
+            });
+        }
+
+        // 状态过滤
+        if (status) {
+            const statusValue = status === 'online' ? 1 : 0;
+            result = result.filter((agent: Agent) => agent.status === statusValue);
+        }
+
+        // 标签过滤
+        if (selectedTags.length > 0) {
+            result = result.filter((agent: Agent) => {
+                return selectedTags.some(tag => agent.tags?.includes(tag));
+            });
+        }
+
+        return result;
+    }, [agents, keyword, status, selectedTags]);
 
     const columns: ColumnsType<Agent> = [
         {
@@ -461,9 +445,6 @@ const AgentList = () => {
         },
     ];
 
-    const dataSource = agentPaging?.items || [];
-    const total = agentPaging?.total || 0;
-
     return (
         <div className="space-y-6">
             <PageHeader
@@ -543,9 +524,36 @@ const AgentList = () => {
                 </Form.Item>
             </Form>
 
+            {tags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap pt-4">
+                    <span className="">标签筛选：</span>
+                    <Tag.CheckableTag
+                        checked={selectedTags.length === 0}
+                        onChange={() => setSelectedTags([])}
+                    >
+                        全部
+                    </Tag.CheckableTag>
+                    {tags.map((tag) => (
+                        <Tag.CheckableTag
+                            key={tag}
+                            checked={selectedTags.includes(tag)}
+                            onChange={(checked) => {
+                                if (checked) {
+                                    setSelectedTags([...selectedTags, tag]);
+                                } else {
+                                    setSelectedTags(selectedTags.filter(t => t !== tag));
+                                }
+                            }}
+                        >
+                            {tag}
+                        </Tag.CheckableTag>
+                    ))}
+                </div>
+            )}
+
             <Table<Agent>
                 columns={columns}
-                dataSource={dataSource}
+                dataSource={filteredAgents}
                 loading={isLoading || isFetching}
                 rowKey="id"
                 scroll={{x: 'max-content'}}
@@ -554,14 +562,7 @@ const AgentList = () => {
                     onChange: (keys) => setSelectedRowKeys(keys),
                     preserveSelectedRowKeys: true,
                 }}
-                pagination={{
-                    current: pageIndex,
-                    pageSize: pageSize,
-                    total: total,
-                    showSizeChanger: true,
-                    showTotal: (count) => `共 ${count} 条`,
-                }}
-                onChange={handleTableChange}
+                pagination={false}
                 style={{
                     marginTop: 16,
                 }}

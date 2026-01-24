@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/utils"
 	"github.com/go-orz/orz"
@@ -48,28 +45,15 @@ func (h *AgentHandler) GetAgents(c echo.Context) error {
 		return err
 	}
 
-	slices.SortFunc(agents, func(a, b models.Agent) int {
-		// 先按照状态排序
-		if a.Status != b.Status {
-			return b.Status - a.Status
-		}
-		// 再按权重排序（数字越大越靠前）
-		if a.Weight != b.Weight {
-			return b.Weight - a.Weight
-		}
-		// 权重相同时按名称排序
-		return strings.Compare(a.Name, b.Name)
-	})
+	// 排序
+	SortAgents(agents)
 
 	result := make([]map[string]interface{}, 0, len(agents))
 	for _, agent := range agents {
 		result = append(result, h.buildAgentListItem(agent, isAuthenticated))
 	}
 
-	return orz.Ok(c, orz.Map{
-		"items": result,
-		"total": len(result),
-	})
+	return orz.Ok(c, result)
 }
 
 func (h *AgentHandler) buildAgentListItem(agent models.Agent, isAuthenticated bool) map[string]interface{} {
