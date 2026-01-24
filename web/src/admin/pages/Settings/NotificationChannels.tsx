@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react';
-import { App, Button, Card, Collapse, Form, Input, InputNumber, Select, Space, Spin, Switch } from 'antd';
-import { TestTube } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {useEffect, useState} from 'react';
+import {Alert, App, Button, Card, Form, Input, InputNumber, Select, Space, Spin, Switch} from 'antd';
+import {TestTube} from 'lucide-react';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
     getNotificationChannels,
     type NotificationChannel,
     saveNotificationChannels,
     testNotificationChannel,
 } from '@/api/property.ts';
-import { getErrorMessage } from '@/lib/utils';
+import {getErrorMessage} from '@/lib/utils';
+import NotificationCustomHelp from "@admin/pages/Settings/NotificationCustomHelp.tsx";
 
 const NotificationChannels = () => {
     const [form] = Form.useForm();
-    const { message: messageApi } = App.useApp();
+    const {message: messageApi} = App.useApp();
     const queryClient = useQueryClient();
     const [savedValues, setSavedValues] = useState<Record<string, any>>({});
 
@@ -34,7 +35,7 @@ const NotificationChannels = () => {
     const webhookEnabled = Form.useWatch('webhookEnabled', form);
 
     // 获取通知渠道列表
-    const { data: channels = [], isLoading } = useQuery({
+    const {data: channels = [], isLoading} = useQuery({
         queryKey: ['notificationChannels'],
         queryFn: getNotificationChannels,
     });
@@ -44,7 +45,7 @@ const NotificationChannels = () => {
         mutationFn: saveNotificationChannels,
         onSuccess: () => {
             messageApi.success('保存成功');
-            queryClient.invalidateQueries({ queryKey: ['notificationChannels'] });
+            queryClient.invalidateQueries({queryKey: ['notificationChannels']});
         },
         onError: (error: unknown) => {
             messageApi.error(getErrorMessage(error, '保存失败'));
@@ -236,19 +237,13 @@ const NotificationChannels = () => {
     };
 
     const handleTest = (type: string) => {
-        // 检查表单是否有未保存的修改
-        const currentValues = form.getFieldsValue();
-        if (JSON.stringify(currentValues) !== JSON.stringify(savedValues)) {
-            messageApi.warning('检测到未保存的修改，请先保存配置后再进行测试');
-            return;
-        }
         testMutation.mutate(type);
     };
 
     if (isLoading) {
         return (
             <div className="flex justify-center items-center py-20">
-                <Spin />
+                <Spin/>
             </div>
         );
     }
@@ -257,11 +252,12 @@ const NotificationChannels = () => {
         <div>
             <div className="mb-4">
                 <h2 className="text-xl font-bold">通知渠道管理</h2>
-                <p className="text-gray-500 mt-2">配置钉钉、企业微信、飞书和自定义Webhook通知渠道</p>
+                <p className="text-gray-500 my-2">配置钉钉、企业微信、飞书和自定义Webhook通知渠道</p>
+                <Alert title="更改配置后，请点击下方的保存后再进行测试。" type="info" showIcon/>
             </div>
 
             <Form form={form} layout="vertical" onFinish={handleSave}>
-                <Space direction={'vertical'} className={'w-full'}>
+                <Space orientation={'vertical'} className={'w-full'}>
                     {/* 钉钉通知 */}
                     <Card
                         title={
@@ -269,8 +265,8 @@ const NotificationChannels = () => {
                                 <div>钉钉通知</div>
                                 <div className={'text-xs font-normal'}>
                                     了解更多：<a href="https://open.dingtalk.com/document/robots/custom-robot-access"
-                                        target="_blank"
-                                        rel="noopener noreferrer">https://open.dingtalk.com/document/robots/custom-robot-access</a>
+                                                target="_blank"
+                                                rel="noopener noreferrer">https://open.dingtalk.com/document/robots/custom-robot-access</a>
                                 </div>
                             </div>
                         }
@@ -280,7 +276,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('dingtalk')}
                                 loading={testMutation.isPending}
                                 disabled={!dingtalkEnabled}
@@ -290,7 +286,7 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用钉钉通知" name="dingtalkEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
@@ -299,26 +295,26 @@ const NotificationChannels = () => {
                                 prevValues.dingtalkEnabled !== currentValues.dingtalkEnabled
                             }
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('dingtalkEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="访问令牌 (Access Token)"
                                             name="dingtalkSecretKey"
                                             rules={[
-                                                { required: true, message: '请输入访问令牌' },
-                                                { validator: validateToken }
+                                                {required: true, message: '请输入访问令牌'},
+                                                {validator: validateToken}
                                             ]}
                                             tooltip="在钉钉机器人配置中获取的 access_token"
                                         >
-                                            <Input placeholder="输入访问令牌" />
+                                            <Input placeholder="输入访问令牌"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="加签密钥（可选）"
                                             name="dingtalkSignSecret"
                                             tooltip="如果启用了加签，请填写 SEC 开头的密钥"
                                         >
-                                            <Input.Password placeholder="SEC 开头的加签密钥" />
+                                            <Input.Password placeholder="SEC 开头的加签密钥"/>
                                         </Form.Item>
                                     </>
                                 ) : null
@@ -333,8 +329,8 @@ const NotificationChannels = () => {
                                 <div>企业微信通知</div>
                                 <div className={'text-xs font-normal'}>
                                     了解更多：<a href="https://work.weixin.qq.com/api/doc/90000/90136/91770"
-                                        target="_blank"
-                                        rel="noopener noreferrer">https://work.weixin.qq.com/api/doc/90000/90136/91770</a>
+                                                target="_blank"
+                                                rel="noopener noreferrer">https://work.weixin.qq.com/api/doc/90000/90136/91770</a>
                                 </div>
                             </div>
                         }
@@ -344,7 +340,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('wecom')}
                                 loading={testMutation.isPending}
                                 disabled={!wecomEnabled}
@@ -354,25 +350,25 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用企业微信通知" name="wecomEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
                             noStyle
                             shouldUpdate={(prevValues, currentValues) => prevValues.wecomEnabled !== currentValues.wecomEnabled}
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('wecomEnabled') ? (
                                     <Form.Item
                                         label="Webhook Key"
                                         name="wecomSecretKey"
                                         rules={[
-                                            { required: true, message: '请输入 Webhook Key' },
-                                            { validator: validateToken }
+                                            {required: true, message: '请输入 Webhook Key'},
+                                            {validator: validateToken}
                                         ]}
                                         tooltip="企业微信群机器人的 Webhook Key"
                                     >
-                                        <Input placeholder="输入 Webhook Key" />
+                                        <Input placeholder="输入 Webhook Key"/>
                                     </Form.Item>
                                 ) : null
                             }
@@ -386,8 +382,8 @@ const NotificationChannels = () => {
                                 <div>企业微信应用通知</div>
                                 <div className={'text-xs font-normal'}>
                                     了解更多：<a href="https://developer.work.weixin.qq.com/document/path/90236"
-                                        target="_blank"
-                                        rel="noopener noreferrer">https://developer.work.weixin.qq.com/document/path/90236</a>
+                                                target="_blank"
+                                                rel="noopener noreferrer">https://developer.work.weixin.qq.com/document/path/90236</a>
                                 </div>
                             </div>
                         }
@@ -397,7 +393,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('wecomApp')}
                                 loading={testMutation.isPending}
                                 disabled={!wecomAppEnabled}
@@ -407,57 +403,58 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用企业微信应用通知" name="wecomAppEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
                             noStyle
                             shouldUpdate={(prevValues, currentValues) => prevValues.wecomAppEnabled !== currentValues.wecomAppEnabled}
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('wecomAppEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="origin"
                                             name="wecomAppOrigin"
                                             initialValue="https://qyapi.weixin.qq.com"
-                                            rules={[{ required: true, message: '请输入企业微信应用origin' }]}
+                                            rules={[{required: true, message: '请输入企业微信应用origin'}]}
                                             tooltip="企业微信应用origin， Pika部署在可信IP的服务器下保持默认即可"
                                         >
-                                            <Input placeholder="https://qyapi.weixin.qq.com" />
+                                            <Input placeholder="https://qyapi.weixin.qq.com"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="corpid"
                                             name="wecomAppCorpId"
-                                            rules={[{ required: true, message: '请输入企业微信的corpid' }]}
+                                            rules={[{required: true, message: '请输入企业微信的corpid'}]}
                                             tooltip="企业微信的corpid"
                                         >
-                                            <Input placeholder="输入您的企业的corpid" />
+                                            <Input placeholder="输入您的企业的corpid"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="corpsecret"
                                             name="wecomAppCorpSecret"
-                                            rules={[{ required: true, message: '请输入企业微信应用的corpsecret' }]}
+                                            rules={[{required: true, message: '请输入企业微信应用的corpsecret'}]}
                                             tooltip="企业微信应用的corpsecret"
                                         >
-                                            <Input.Password placeholder="输入您的企业应用的corpsecret" />
+                                            <Input.Password placeholder="输入您的企业应用的corpsecret"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="agentid"
                                             name="wecomAppAgentId"
-                                            rules={[{ required: true, message: '请输入企业微信应用的agentid' }]}
+                                            rules={[{required: true, message: '请输入企业微信应用的agentid'}]}
                                             tooltip="企业微信应用的agentid"
                                         >
-                                            <InputNumber style={{ width: '100%' }} placeholder="输入您的企业应用的agentid" />
+                                            <InputNumber style={{width: '100%'}}
+                                                         placeholder="输入您的企业应用的agentid"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="touser"
                                             name="wecomAppToUser"
                                             initialValue="@all"
-                                            rules={[{ required: true, message: '请输入接收消息的用户' }]}
+                                            rules={[{required: true, message: '请输入接收消息的用户'}]}
                                             tooltip="接收告警消息的用户"
                                         >
-                                            <Input placeholder="输入接收告警消息的用户，全部可填@all" />
+                                            <Input placeholder="输入接收告警消息的用户，全部可填@all"/>
                                         </Form.Item>
                                     </>
                                 ) : null
@@ -472,9 +469,9 @@ const NotificationChannels = () => {
                                 <div>飞书通知</div>
                                 <div className={'text-xs font-normal'}>
                                     点击 <a
-                                        href="https://www.feishu.cn/hc/zh-CN/articles/360024984973-%E5%9C%A8%E7%BE%A4%E7%BB%84%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%9C%BA%E5%99%A8%E4%BA%BA"
-                                        target="_blank"
-                                        rel="noopener noreferrer">这里</a>
+                                    href="https://www.feishu.cn/hc/zh-CN/articles/360024984973-%E5%9C%A8%E7%BE%A4%E7%BB%84%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%9C%BA%E5%99%A8%E4%BA%BA"
+                                    target="_blank"
+                                    rel="noopener noreferrer">这里</a>
                                     了解如何获取 Webhook URL。
                                 </div>
                             </div>
@@ -485,7 +482,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('feishu')}
                                 loading={testMutation.isPending}
                                 disabled={!feishuEnabled}
@@ -495,7 +492,7 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用飞书通知" name="feishuEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
@@ -504,26 +501,26 @@ const NotificationChannels = () => {
                                 prevValues.feishuEnabled !== currentValues.feishuEnabled
                             }
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('feishuEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="Webhook Token"
                                             name="feishuSecretKey"
                                             rules={[
-                                                { required: true, message: '请输入 Webhook Token' },
-                                                { validator: validateToken }
+                                                {required: true, message: '请输入 Webhook Token'},
+                                                {validator: validateToken}
                                             ]}
                                             tooltip="飞书群机器人的 Webhook Token"
                                         >
-                                            <Input placeholder="输入 Webhook Token" />
+                                            <Input placeholder="输入 Webhook Token"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="签名密钥（可选）"
                                             name="feishuSignSecret"
                                             tooltip="如果启用了签名验证，请填写密钥"
                                         >
-                                            <Input.Password placeholder="输入签名密钥" />
+                                            <Input.Password placeholder="输入签名密钥"/>
                                         </Form.Item>
                                     </>
                                 ) : null
@@ -538,8 +535,8 @@ const NotificationChannels = () => {
                                 <div>Telegram 通知</div>
                                 <div className={'text-xs font-normal'}>
                                     了解更多：<a href="https://core.telegram.org/bots/api"
-                                        target="_blank"
-                                        rel="noopener noreferrer">https://core.telegram.org/bots/api</a>
+                                                target="_blank"
+                                                rel="noopener noreferrer">https://core.telegram.org/bots/api</a>
                                 </div>
                             </div>
                         }
@@ -549,7 +546,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('telegram')}
                                 loading={testMutation.isPending}
                                 disabled={!telegramEnabled}
@@ -559,7 +556,7 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用 Telegram 通知" name="telegramEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
@@ -568,27 +565,27 @@ const NotificationChannels = () => {
                                 prevValues.telegramEnabled !== currentValues.telegramEnabled
                             }
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('telegramEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="Bot Token"
                                             name="telegramBotToken"
                                             rules={[
-                                                { required: true, message: '请输入 Bot Token' },
-                                                { validator: validateToken }
+                                                {required: true, message: '请输入 Bot Token'},
+                                                {validator: validateToken}
                                             ]}
                                             tooltip="通过 @BotFather 创建机器人后获得的 token"
                                         >
-                                            <Input.Password placeholder="输入 Bot Token" />
+                                            <Input.Password placeholder="输入 Bot Token"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="Chat ID"
                                             name="telegramChatID"
-                                            rules={[{ required: true, message: '请输入 Chat ID' }]}
+                                            rules={[{required: true, message: '请输入 Chat ID'}]}
                                             tooltip="可以是用户 ID、群组 ID 或频道 ID，通过 @userinfobot 等机器人获取"
                                         >
-                                            <Input placeholder="输入 Chat ID，例如：123456789" />
+                                            <Input placeholder="输入 Chat ID，例如：123456789"/>
                                         </Form.Item>
                                     </>
                                 ) : null
@@ -612,7 +609,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('email')}
                                 loading={testMutation.isPending}
                                 disabled={!emailEnabled}
@@ -622,7 +619,7 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用邮件通知" name="emailEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
@@ -631,61 +628,61 @@ const NotificationChannels = () => {
                                 prevValues.emailEnabled !== currentValues.emailEnabled
                             }
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('emailEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="SMTP 服务器"
                                             name="emailSmtpHost"
-                                            rules={[{ required: true, message: '请输入 SMTP 服务器地址' }]}
+                                            rules={[{required: true, message: '请输入 SMTP 服务器地址'}]}
                                             tooltip="邮件服务商的 SMTP 服务器地址，如 smtp.gmail.com"
                                         >
-                                            <Input placeholder="例如：smtp.gmail.com" />
+                                            <Input placeholder="例如：smtp.gmail.com"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="SMTP 端口"
                                             name="emailSmtpPort"
-                                            rules={[{ required: true, message: '请输入 SMTP 端口' }]}
+                                            rules={[{required: true, message: '请输入 SMTP 端口'}]}
                                             tooltip="通常为 587（STARTTLS）或 465（SSL/TLS）"
                                         >
-                                            <Input type="number" placeholder="587" />
+                                            <Input type="number" placeholder="587"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="发件人邮箱"
                                             name="emailFromEmail"
                                             rules={[
-                                                { required: true, message: '请输入发件人邮箱' },
-                                                { type: 'email', message: '请输入有效的邮箱地址' }
+                                                {required: true, message: '请输入发件人邮箱'},
+                                                {type: 'email', message: '请输入有效的邮箱地址'}
                                             ]}
                                             tooltip="用于发送告警邮件的邮箱地址"
                                         >
-                                            <Input placeholder="your-email@example.com" />
+                                            <Input placeholder="your-email@example.com"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="邮箱密码/授权码"
                                             name="emailPassword"
-                                            rules={[{ required: true, message: '请输入邮箱密码或授权码' }]}
+                                            rules={[{required: true, message: '请输入邮箱密码或授权码'}]}
                                             tooltip="某些邮件服务商（如 Gmail、QQ 邮箱）需要使用授权码而非密码"
                                         >
-                                            <Input.Password placeholder="输入邮箱密码或授权码" />
+                                            <Input.Password placeholder="输入邮箱密码或授权码"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="收件人邮箱"
                                             name="emailToEmail"
                                             rules={[
-                                                { required: true, message: '请输入收件人邮箱' },
-                                                { type: 'email', message: '请输入有效的邮箱地址' }
+                                                {required: true, message: '请输入收件人邮箱'},
+                                                {type: 'email', message: '请输入有效的邮箱地址'}
                                             ]}
                                             tooltip="接收告警邮件的邮箱地址"
                                         >
-                                            <Input placeholder="receiver@example.com" />
+                                            <Input placeholder="receiver@example.com"/>
                                         </Form.Item>
                                         <Form.Item
                                             label="邮件主题"
                                             name="emailSubject"
                                             tooltip="告警邮件的主题，默认为 'Pika 告警通知'"
                                         >
-                                            <Input placeholder="Pika 告警通知" />
+                                            <Input placeholder="Pika 告警通知"/>
                                         </Form.Item>
                                     </>
                                 ) : null
@@ -702,7 +699,7 @@ const NotificationChannels = () => {
                             <Button
                                 type="link"
                                 size="small"
-                                icon={<TestTube size={14} />}
+                                icon={<TestTube size={14}/>}
                                 onClick={() => handleTest('webhook')}
                                 loading={testMutation.isPending}
                                 disabled={!webhookEnabled}
@@ -712,7 +709,7 @@ const NotificationChannels = () => {
                         }
                     >
                         <Form.Item label="启用自定义 Webhook" name="webhookEnabled" valuePropName="checked">
-                            <Switch />
+                            <Switch/>
                         </Form.Item>
 
                         <Form.Item
@@ -722,271 +719,155 @@ const NotificationChannels = () => {
                                 prevValues.webhookBodyTemplate !== currentValues.webhookBodyTemplate
                             }
                         >
-                            {({ getFieldValue }) =>
+                            {({getFieldValue}) =>
                                 getFieldValue('webhookEnabled') ? (
                                     <>
                                         <Form.Item
                                             label="Webhook URL"
                                             name="webhookUrl"
                                             rules={[
-                                                { required: true, message: '请输入自定义 Webhook URL' },
-                                                { type: 'url', message: '请输入有效的 URL' },
+                                                {required: true, message: '请输入自定义 Webhook URL'},
+                                                {type: 'url', message: '请输入有效的 URL'},
                                             ]}
                                         >
-                                            <Input placeholder="https://your-server.com/webhook" />
+                                            <Input placeholder="https://your-server.com/webhook"/>
                                         </Form.Item>
-                                        <div className={'mb-4'}>
-                                            <Collapse
-                                                ghost
-                                                items={[
+                                        {/* HTTP 方法 */}
+                                        <Form.Item
+                                            label="HTTP 方法"
+                                            name="webhookMethod"
+                                            tooltip="选择 HTTP 请求方法"
+                                        >
+                                            <Select
+                                                placeholder="选择 HTTP 方法"
+                                                options={[
+                                                    {label: 'GET', value: 'GET'},
+                                                    {label: 'POST', value: 'POST'},
+                                                    {label: 'PUT', value: 'PUT'},
+                                                    {label: 'PATCH', value: 'PATCH'},
+                                                    {label: 'DELETE', value: 'DELETE'},
+                                                ]}
+                                            />
+                                        </Form.Item>
+
+                                        {/* 请求体模板 */}
+                                        <Form.Item
+                                            label="请求体模板"
+                                            name="webhookBodyTemplate"
+                                            tooltip="选择请求体的格式"
+                                        >
+                                            <Select
+                                                placeholder="选择请求体模板"
+                                                options={[
                                                     {
-                                                        key: '1',
-                                                        label: '高级配置',
-                                                        children: (
-                                                            <Space direction="vertical" className="w-full">
-                                                                {/* HTTP 方法 */}
-                                                                <Form.Item
-                                                                    label="HTTP 方法"
-                                                                    name="webhookMethod"
-                                                                    tooltip="选择 HTTP 请求方法"
-                                                                >
-                                                                    <Select
-                                                                        placeholder="选择 HTTP 方法"
-                                                                        options={[
-                                                                            { label: 'GET', value: 'GET' },
-                                                                            { label: 'POST', value: 'POST' },
-                                                                            { label: 'PUT', value: 'PUT' },
-                                                                            { label: 'PATCH', value: 'PATCH' },
-                                                                            { label: 'DELETE', value: 'DELETE' },
-                                                                        ]}
-                                                                    />
-                                                                </Form.Item>
-
-                                                                {/* 请求体模板 */}
-                                                                <Form.Item
-                                                                    label="请求体模板"
-                                                                    name="webhookBodyTemplate"
-                                                                    tooltip="选择请求体的格式"
-                                                                >
-                                                                    <Select
-                                                                        placeholder="选择请求体模板"
-                                                                        options={[
-                                                                            {
-                                                                                label: 'JSON (默认)',
-                                                                                value: 'json'
-                                                                            },
-                                                                            {
-                                                                                label: 'Form 表单',
-                                                                                value: 'form'
-                                                                            },
-                                                                            {
-                                                                                label: '自定义模板',
-                                                                                value: 'custom'
-                                                                            },
-                                                                        ]}
-                                                                    />
-                                                                </Form.Item>
-
-                                                                {/* 自定义请求体 */}
-                                                                {getFieldValue('webhookBodyTemplate') === 'custom' && (
-                                                                    <Form.Item
-                                                                        label="自定义请求体"
-                                                                        name="webhookCustomBody"
-                                                                        rules={[
-                                                                            {
-                                                                                required: true,
-                                                                                message: '请输入自定义请求体模板'
-                                                                            }
-                                                                        ]}
-                                                                        tooltip="支持变量替换，可用变量见下方说明"
-                                                                    >
-                                                                        <Input.TextArea
-                                                                            rows={6}
-                                                                            placeholder='示例: {"alert": "{{alert.message}}", "host": "{{agent.hostname}}"}'
-                                                                        />
-                                                                    </Form.Item>
-                                                                )}
-
-                                                                {/* 自定义请求头 */}
-                                                                <Form.Item label="自定义请求头"
-                                                                    tooltip="添加自定义 HTTP 请求头">
-                                                                    <Form.List name="webhookHeaders">
-                                                                        {(fields, { add, remove }) => (
-                                                                            <>
-                                                                                {fields.map(({
-                                                                                    key,
-                                                                                    name,
-                                                                                    ...restField
-                                                                                }) => (
-                                                                                    <Space
-                                                                                        key={key}
-                                                                                        style={{
-                                                                                            display: 'flex',
-                                                                                            marginBottom: 8
-                                                                                        }}
-                                                                                        align="baseline"
-                                                                                    >
-                                                                                        <Form.Item
-                                                                                            {...restField}
-                                                                                            name={[name, 'key']}
-                                                                                            rules={[{
-                                                                                                required: true,
-                                                                                                message: '请输入 Header 名称'
-                                                                                            }]}
-                                                                                        >
-                                                                                            <Input
-                                                                                                placeholder="Header 名称"
-                                                                                                style={{ width: 200 }}
-                                                                                            />
-                                                                                        </Form.Item>
-                                                                                        <Form.Item
-                                                                                            {...restField}
-                                                                                            name={[name, 'value']}
-                                                                                            rules={[{
-                                                                                                required: true,
-                                                                                                message: '请输入 Header 值'
-                                                                                            }]}
-                                                                                        >
-                                                                                            <Input
-                                                                                                placeholder="Header 值"
-                                                                                                style={{ width: 300 }}
-                                                                                            />
-                                                                                        </Form.Item>
-                                                                                        <Button
-                                                                                            onClick={() => remove(name)}
-                                                                                            danger
-                                                                                            type="link"
-                                                                                        >
-                                                                                            删除
-                                                                                        </Button>
-                                                                                    </Space>
-                                                                                ))}
-                                                                                <Form.Item>
-                                                                                    <Button
-                                                                                        type="dashed"
-                                                                                        onClick={() => add()}
-                                                                                        block
-                                                                                    >
-                                                                                        添加请求头
-                                                                                    </Button>
-                                                                                </Form.Item>
-                                                                            </>
-                                                                        )}
-                                                                    </Form.List>
-                                                                </Form.Item>
-                                                            </Space>
-                                                        ),
+                                                        label: 'JSON (默认)',
+                                                        value: 'json'
+                                                    },
+                                                    {
+                                                        label: 'Form 表单',
+                                                        value: 'form'
+                                                    },
+                                                    {
+                                                        label: '自定义模板',
+                                                        value: 'custom'
                                                     },
                                                 ]}
                                             />
-                                        </div>
+                                        </Form.Item>
+
+                                        {/* 自定义请求体 */}
+                                        {getFieldValue('webhookBodyTemplate') === 'custom' && (
+                                            <Form.Item
+                                                label="自定义请求体"
+                                                name="webhookCustomBody"
+                                                rules={[
+                                                    {
+                                                        required: true,
+                                                        message: '请输入自定义请求体模板'
+                                                    }
+                                                ]}
+                                                tooltip="支持变量替换，可用变量见下方说明"
+                                            >
+                                                <Input.TextArea
+                                                    rows={6}
+                                                    placeholder='示例: {"alert": "{{alert.message}}", "host": "{{agent.hostname}}"}'
+                                                />
+                                            </Form.Item>
+                                        )}
+
+                                        {/* 自定义请求头 */}
+                                        <Form.Item label="自定义请求头"
+                                                   tooltip="添加自定义 HTTP 请求头">
+                                            <Form.List name="webhookHeaders">
+                                                {(fields, {add, remove}) => (
+                                                    <>
+                                                        {fields.map(({
+                                                                         key,
+                                                                         name,
+                                                                         ...restField
+                                                                     }) => (
+                                                            <Space
+                                                                key={key}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    marginBottom: 8
+                                                                }}
+                                                                align="baseline"
+                                                            >
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, 'key']}
+                                                                    rules={[{
+                                                                        required: true,
+                                                                        message: '请输入 Header 名称'
+                                                                    }]}
+                                                                >
+                                                                    <Input
+                                                                        placeholder="Header 名称"
+                                                                        style={{width: 200}}
+                                                                    />
+                                                                </Form.Item>
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, 'value']}
+                                                                    rules={[{
+                                                                        required: true,
+                                                                        message: '请输入 Header 值'
+                                                                    }]}
+                                                                >
+                                                                    <Input
+                                                                        placeholder="Header 值"
+                                                                        style={{width: 300}}
+                                                                    />
+                                                                </Form.Item>
+                                                                <Button
+                                                                    onClick={() => remove(name)}
+                                                                    danger
+                                                                    type="link"
+                                                                >
+                                                                    删除
+                                                                </Button>
+                                                            </Space>
+                                                        ))}
+                                                        <Form.Item>
+                                                            <Button
+                                                                type="dashed"
+                                                                onClick={() => add()}
+                                                                block
+                                                            >
+                                                                添加请求头
+                                                            </Button>
+                                                        </Form.Item>
+                                                    </>
+                                                )}
+                                            </Form.List>
+                                        </Form.Item>
                                     </>
                                 ) : null
                             }
                         </Form.Item>
 
-                        <div className={'space-y-3 text-sm'}>
-                            <div className={'font-semibold'}>请求体格式说明：</div>
-
-                            {/* JSON 格式说明 */}
-                            <div className={'space-y-1'}>
-                                <strong>1. JSON 格式 (默认)：</strong>
-                                <div className={'text-gray-600 text-xs'}>
-                                    发送 <code className={'bg-gray-100 px-1 rounded'}>application/json</code> 格式的数据
-                                </div>
-                                <pre className={'border p-2 rounded-md text-xs mt-1 bg-gray-50'}>
-                                    {JSON.stringify({
-                                        "msg_type": "text",
-                                        "text": { "content": "告警消息内容" },
-                                        "agent": {
-                                            "id": "agent-id",
-                                            "name": "探针名称",
-                                            "hostname": "主机名",
-                                            "ip": "192.168.1.1"
-                                        },
-                                        "alert": {
-                                            "type": "cpu",
-                                            "level": "warning",
-                                            "status": "firing",
-                                            "message": "CPU使用率过高",
-                                            "threshold": 80,
-                                            "actualValue": 85.5,
-                                            "firedAt": 1234567890000,
-                                            "resolvedAt": 0
-                                        }
-                                    }, null, 2)}
-                                </pre>
-                            </div>
-
-                            {/* Form 表单格式说明 */}
-                            <div className={'space-y-1'}>
-                                <strong>2. Form 表单格式：</strong>
-                                <div className={'text-gray-600 text-xs'}>
-                                    发送 <code
-                                        className={'bg-gray-100 px-1 rounded'}>application/x-www-form-urlencoded</code> 格式的数据
-                                </div>
-                                <div className={'border p-2 rounded-md text-xs mt-1 bg-gray-50'}>
-                                    <div className={'font-semibold mb-1'}>包含以下字段：</div>
-                                    <div className={'grid grid-cols-2 gap-x-4 gap-y-1'}>
-                                        <div>• <code>message</code> - 告警消息</div>
-                                        <div>• <code>agent_id</code> - 探针ID</div>
-                                        <div>• <code>agent_name</code> - 探针名称</div>
-                                        <div>• <code>agent_hostname</code> - 主机名</div>
-                                        <div>• <code>agent_ip</code> - IP地址(合并)</div>
-                                        <div>• <code>agent_ipv4</code> - IPv4 地址</div>
-                                        <div>• <code>agent_ipv6</code> - IPv6 地址</div>
-                                        <div>• <code>alert_type</code> - 告警类型</div>
-                                        <div>• <code>alert_level</code> - 告警级别</div>
-                                        <div>• <code>alert_status</code> - 告警状态</div>
-                                        <div>• <code>alert_message</code> - 告警详情</div>
-                                        <div>• <code>threshold</code> - 阈值</div>
-                                        <div>• <code>actual_value</code> - 当前值</div>
-                                        <div>• <code>fired_at</code> - 触发时间(格式化)</div>
-                                        <div>• <code>resolved_at</code> - 恢复时间(格式化)</div>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 自定义模板说明 */}
-                            <div className={'space-y-1'}>
-                                <strong>3. 自定义模板：</strong>
-                                <div className={'text-gray-600 text-xs'}>
-                                    支持变量替换，Content-Type 为 <code
-                                        className={'bg-gray-100 px-1 rounded'}>text/plain</code>
-                                </div>
-                                <div className={'border p-2 rounded-md text-xs mt-1 bg-gray-50'}>
-                                    <div className={'font-semibold mb-1'}>可用变量：</div>
-                                    <div className={'grid grid-cols-2 gap-x-4 gap-y-1'}>
-                                        <div>• <code>{`{{message}}`}</code> - 告警消息</div>
-                                        <div>• <code>{`{{agent.id}}`}</code> - 探针ID</div>
-                                        <div>• <code>{`{{agent.name}}`}</code> - 探针名称</div>
-                                        <div>• <code>{`{{agent.hostname}}`}</code> - 主机名</div>
-                                        <div>• <code>{`{{agent.ip}}`}</code> - IP地址(合并)</div>
-                                        <div>• <code>{`{{agent.ipv4}}`}</code> - IPv4 地址</div>
-                                        <div>• <code>{`{{agent.ipv6}}`}</code> - IPv6 地址</div>
-                                        <div>• <code>{`{{alert.type}}`}</code> - 告警类型</div>
-                                        <div>• <code>{`{{alert.level}}`}</code> - 告警级别</div>
-                                        <div>• <code>{`{{alert.status}}`}</code> - 告警状态</div>
-                                        <div>• <code>{`{{alert.message}}`}</code> - 告警消息</div>
-                                        <div>• <code>{`{{alert.threshold}}`}</code> - 阈值</div>
-                                        <div>• <code>{`{{alert.actualValue}}`}</code> - 当前值</div>
-                                        <div>• <code>{`{{alert.firedAt}}`}</code> - 触发时间(格式化)</div>
-                                        <div>• <code>{`{{alert.resolvedAt}}`}</code> - 恢复时间(格式化)</div>
-                                    </div>
-                                    <div className={'mt-2 pt-2 border-t'}>
-                                        <div className={'font-semibold mb-1'}>示例：</div>
-                                        <pre className={'text-xs'}>
-                                            {`{
-  "alert": "{{alert.message}}",
-  "host": "{{agent.hostname}}",
-  "level": "{{alert.level}}"
-}`}
-                                        </pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <NotificationCustomHelp/>
                     </Card>
 
                     <Form.Item>
