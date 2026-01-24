@@ -74,7 +74,7 @@ const router = createBrowserRouter([
         path: '/admin',
         element: (
             <PrivateRoute>
-                {lazyLoad(AdminLayout)}
+                <AdminLayout/>
             </PrivateRoute>
         ),
         children: [

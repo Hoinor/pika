@@ -1,7 +1,7 @@
 import {type JSX, useEffect, useMemo, useRef, useState} from 'react';
 import {Outlet, useLocation, useNavigate} from 'react-router-dom';
 import type {MenuProps} from 'antd';
-import {App, Avatar, Button, ConfigProvider, Dropdown, Space, theme} from 'antd';
+import {App as AntApp, Avatar, Button, ConfigProvider, Dropdown, Space, theme} from 'antd';
 import {
     Activity,
     AlertTriangle,
@@ -36,7 +36,7 @@ const HEADER_HEIGHT = 56;
 const AdminLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const {message: messageApi, modal} = App.useApp();
+    const {message: messageApi, modal} = AntApp.useApp();
     const [userInfo, setUserInfo] = useState<User | null>(null);
     const [version, setVersion] = useState<VersionInfo>();
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -210,106 +210,107 @@ const AdminLayout = () => {
                 algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
             }}
         >
-            <div className="min-h-screen bg-white dark:bg-[#141414]">
-                {/* 顶部导航栏 */}
-                <header
-                    className="fixed top-0 left-0 right-0 z-[300] h-14 border-b border-white/20 dark:border-white/10 bg-[#060b16]/95 dark:bg-[#141414]/95 backdrop-blur">
-                    <div className="flex h-full items-center justify-between px-4">
-                        <div className="flex items-center gap-3 text-white">
-                            <div className="flex items-center justify-center">
-                                <img
-                                    src={"/api/logo"}
-                                    alt="Logo"
-                                    className="h-10 w-10 object-contain rounded-md"
-                                    onError={(e) => {
-                                        e.currentTarget.src = '/logo.png';
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.3em] text-white/60">{window.SystemConfig?.SystemNameZh}</p>
-                                <p className="text-sm font-semibold">控制台</p>
-                            </div>
-                        </div>
-
-                        <Space size={8} className="flex h-full items-center">
-                            <Button
-                                type="text"
-                                icon={<Eye className="h-4 w-4" strokeWidth={2}/>}
-                                onClick={() => window.open('/', '_blank')}
-                                className="hidden !h-9 !items-center !rounded-full !px-3 !text-xs !text-white/80 hover:!bg-white/10 sm:!inline-flex"
-                            >
-                                公共页面
-                            </Button>
-                            <Button
-                                type="text"
-                                icon={<BookOpen className="h-4 w-4" strokeWidth={2}/>}
-                                onClick={() => navigate('/admin/agents-install/one-click')}
-                                className="!h-9 !items-center !rounded-full !px-3 !text-xs !text-white hover:!bg-blue-500/10"
-                            >
-                                部署指南
-                            </Button>
-                            <button
-                                ref={darkModeButtonRef}
-                                type="button"
-                                onClick={() => toggleDarkMode(!isDarkMode)}
-                                className="inline-flex h-9 items-center rounded-full p-2 text-white/80 hover:bg-white/10 transition-all"
-                                title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
-                            >
-                                {isDarkMode ? (
-                                    <Sun className="h-4 w-4" strokeWidth={2}/>
-                                ) : (
-                                    <Moon className="h-4 w-4" strokeWidth={2}/>
-                                )}
-                            </button>
-                            <Dropdown menu={{items: userMenuItems}} placement="bottomRight" trigger={['click']}>
-                                <button
-                                    type="button"
-                                    className="flex cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-left text-white transition-colors hover:border-white/40"
-                                >
-                                    <Avatar
-                                        size={24}
-                                        icon={<UserIcon className="h-3.5 w-3.5" strokeWidth={2}/>}
-                                        className="!bg-white/20"
+            <AntApp>
+                <div className="min-h-screen bg-white dark:bg-[#141414]">
+                    {/* 顶部导航栏 */}
+                    <header
+                        className="fixed top-0 left-0 right-0 z-[300] h-14 border-b border-white/20 dark:border-white/10 bg-[#060b16]/95 dark:bg-[#141414]/95 backdrop-blur">
+                        <div className="flex h-full items-center justify-between px-4">
+                            <div className="flex items-center gap-3 text-white">
+                                <div className="flex items-center justify-center">
+                                    <img
+                                        src={"/api/logo"}
+                                        alt="Logo"
+                                        className="h-10 w-10 object-contain rounded-md"
+                                        onError={(e) => {
+                                            e.currentTarget.src = '/logo.png';
+                                        }}
                                     />
-                                    <span className="text-xs font-medium">
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.3em] text-white/60">{window.SystemConfig?.SystemNameZh}</p>
+                                    <p className="text-sm font-semibold">控制台</p>
+                                </div>
+                            </div>
+
+                            <Space size={8} className="flex h-full items-center">
+                                <Button
+                                    type="text"
+                                    icon={<Eye className="h-4 w-4" strokeWidth={2}/>}
+                                    onClick={() => window.open('/', '_blank')}
+                                    className="hidden !h-9 !items-center !rounded-full !px-3 !text-xs !text-white/80 hover:!bg-white/10 sm:!inline-flex"
+                                >
+                                    公共页面
+                                </Button>
+                                <Button
+                                    type="text"
+                                    icon={<BookOpen className="h-4 w-4" strokeWidth={2}/>}
+                                    onClick={() => navigate('/admin/agents-install/one-click')}
+                                    className="!h-9 !items-center !rounded-full !px-3 !text-xs !text-white hover:!bg-blue-500/10"
+                                >
+                                    部署指南
+                                </Button>
+                                <button
+                                    ref={darkModeButtonRef}
+                                    type="button"
+                                    onClick={() => toggleDarkMode(!isDarkMode)}
+                                    className="inline-flex h-9 items-center rounded-full p-2 text-white/80 hover:bg-white/10 transition-all"
+                                    title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
+                                >
+                                    {isDarkMode ? (
+                                        <Sun className="h-4 w-4" strokeWidth={2}/>
+                                    ) : (
+                                        <Moon className="h-4 w-4" strokeWidth={2}/>
+                                    )}
+                                </button>
+                                <Dropdown menu={{items: userMenuItems}} placement="bottomRight" trigger={['click']}>
+                                    <button
+                                        type="button"
+                                        className="flex cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-left text-white transition-colors hover:border-white/40"
+                                    >
+                                        <Avatar
+                                            size={24}
+                                            icon={<UserIcon className="h-3.5 w-3.5" strokeWidth={2}/>}
+                                            className="!bg-white/20"
+                                        />
+                                        <span className="text-xs font-medium">
                                         {userInfo?.username || '访客'}
                                     </span>
-                                </button>
-                            </Dropdown>
-                        </Space>
-                    </div>
-                </header>
-
-                {/* 侧边栏 */}
-                <aside
-                    className="fixed left-0 z-[200] hidden h-screen overflow-hidden border-r border-white/60 dark:border-white/10 bg-white/90 dark:bg-[#141414]/90 shadow-sm backdrop-blur lg:block"
-                    style={{
-                        width: SIDEBAR_WIDTH,
-                        paddingTop: HEADER_HEIGHT,
-                    }}
-                >
-                    <div className="flex h-full flex-col">
-                        <div className="px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-slate-500">导航</p>
-                            <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-slate-100">管理面板</p>
+                                    </button>
+                                </Dropdown>
+                            </Space>
                         </div>
-                        {/* 菜单区域 */}
-                        <ScrollArea className="px-3 pb-6 space-y-1 h-[calc(100vh-228px)]">
-                            {menuItems.map((item) => {
-                                const isActive = location.pathname.startsWith(item.path);
-                                return (
-                                    <button
-                                        key={item.key}
-                                        type="button"
-                                        onClick={() => handleNavigate(item)}
-                                        className={cn(
-                                            'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all cursor-pointer',
-                                            isActive
-                                                ? 'bg-gradient-to-r from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
-                                        )}
-                                    >
+                    </header>
+
+                    {/* 侧边栏 */}
+                    <aside
+                        className="fixed left-0 z-[200] hidden h-screen overflow-hidden border-r border-white/60 dark:border-white/10 bg-white/90 dark:bg-[#141414]/90 shadow-sm backdrop-blur lg:block"
+                        style={{
+                            width: SIDEBAR_WIDTH,
+                            paddingTop: HEADER_HEIGHT,
+                        }}
+                    >
+                        <div className="flex h-full flex-col">
+                            <div className="px-4 py-4">
+                                <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-slate-500">导航</p>
+                                <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-slate-100">管理面板</p>
+                            </div>
+                            {/* 菜单区域 */}
+                            <ScrollArea className="px-3 pb-6 space-y-1 h-[calc(100vh-228px)]">
+                                {menuItems.map((item) => {
+                                    const isActive = location.pathname.startsWith(item.path);
+                                    return (
+                                        <button
+                                            key={item.key}
+                                            type="button"
+                                            onClick={() => handleNavigate(item)}
+                                            className={cn(
+                                                'group relative flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-all cursor-pointer',
+                                                isActive
+                                                    ? 'bg-gradient-to-r from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                    : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                            )}
+                                        >
                                             <span
                                                 className={cn(
                                                     'flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 shadow-sm',
@@ -318,73 +319,74 @@ const AdminLayout = () => {
                                             >
                                                 {item.icon}
                                             </span>
-                                        <span className="truncate font-medium">{item.label}</span>
-                                        {isActive &&
-                                            <span
-                                                className="ml-auto text-[10px] uppercase text-blue-500 dark:text-blue-400">当前</span>}
-                                    </button>
-                                );
-                            })}
-                        </ScrollArea>
+                                            <span className="truncate font-medium">{item.label}</span>
+                                            {isActive &&
+                                                <span
+                                                    className="ml-auto text-[10px] uppercase text-blue-500 dark:text-blue-400">当前</span>}
+                                        </button>
+                                    );
+                                })}
+                            </ScrollArea>
 
-                        {/* 版本信息 */}
-                        {version && (
-                            <div className="border-t border-gray-100 dark:border-slate-800 px-4 py-4">
-                                <div className="rounded-2xl bg-gray-50/90 dark:bg-slate-800/90 p-3 shadow-inner">
-                                    <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400 dark:text-slate-500">版本信息</p>
-                                    <div className="mt-2 flex items-end justify-between">
-                                        <div>
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Server: {version.version}</p>
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Agent: {version.agentVersion}</p>
-                                            <p className="text-[11px] text-gray-500 dark:text-slate-400 uppercase tracking-[0.1em]">
-                                                {window.SystemConfig?.SystemNameEn}
-                                            </p>
+                            {/* 版本信息 */}
+                            {version && (
+                                <div className="border-t border-gray-100 dark:border-slate-800 px-4 py-4">
+                                    <div className="rounded-2xl bg-gray-50/90 dark:bg-slate-800/90 p-3 shadow-inner">
+                                        <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400 dark:text-slate-500">版本信息</p>
+                                        <div className="mt-2 flex items-end justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Server: {version.version}</p>
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Agent: {version.agentVersion}</p>
+                                                <p className="text-[11px] text-gray-500 dark:text-slate-400 uppercase tracking-[0.1em]">
+                                                    {window.SystemConfig?.SystemNameEn}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </aside>
-
-                {/* 主内容区 */}
-                <div className="flex flex-col bg-white dark:bg-[#141414]"
-                     style={{paddingTop: HEADER_HEIGHT, minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`}}>
-                    {/* 内容区域 */}
-                    <main className="flex-grow bg-white dark:bg-[#141414] pb-20 pt-5 lg:ml-[240px] lg:pb-10">
-                        <div className="w-full px-4 pb-4 lg:px-8">
-                            <Outlet/>
+                            )}
                         </div>
-                    </main>
-                </div>
+                    </aside>
 
-                {/* 移动端底部导航栏 */}
-                <nav
-                    className="fixed bottom-0 left-0 right-0 z-[300] border-t border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 backdrop-blur lg:hidden">
-                    <div className="grid h-16 grid-cols-5">
-                        {menuItems.map((item) => {
-                            const isActive = location.pathname.startsWith(item.path);
-                            return (
-                                <button
-                                    key={item.key}
-                                    type="button"
-                                    onClick={() => handleNavigate(item)}
-                                    className={cn(
-                                        'flex flex-col items-center justify-center gap-1 text-xs font-medium',
-                                        isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'
-                                    )}
-                                >
+                    {/* 主内容区 */}
+                    <div className="flex flex-col bg-white dark:bg-[#141414]"
+                         style={{paddingTop: HEADER_HEIGHT, minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`}}>
+                        {/* 内容区域 */}
+                        <main className="flex-grow bg-white dark:bg-[#141414] pb-20 pt-5 lg:ml-[240px] lg:pb-10">
+                            <div className="w-full px-4 pb-4 lg:px-8">
+                                <Outlet/>
+                            </div>
+                        </main>
+                    </div>
+
+                    {/* 移动端底部导航栏 */}
+                    <nav
+                        className="fixed bottom-0 left-0 right-0 z-[300] border-t border-gray-200 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 backdrop-blur lg:hidden">
+                        <div className="grid h-16 grid-cols-5">
+                            {menuItems.map((item) => {
+                                const isActive = location.pathname.startsWith(item.path);
+                                return (
+                                    <button
+                                        key={item.key}
+                                        type="button"
+                                        onClick={() => handleNavigate(item)}
+                                        className={cn(
+                                            'flex flex-col items-center justify-center gap-1 text-xs font-medium',
+                                            isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-slate-400'
+                                        )}
+                                    >
                                     <span
                                         className={cn('rounded-full p-2', isActive ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400' : 'text-current')}>
                                         {item.icon}
                                     </span>
-                                    <span>{item.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </nav>
-            </div>
+                                        <span>{item.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </nav>
+                </div>
+            </AntApp>
         </ConfigProvider>
     );
 };
