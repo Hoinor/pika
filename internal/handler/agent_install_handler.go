@@ -204,6 +204,7 @@ download_agent() {
     fi
 
     # 移动到目标位置
+	mkdir -p /usr/local/bin
     mv "$temp_file" "/usr/local/bin/$AGENT_NAME"
     chmod +x "/usr/local/bin/$AGENT_NAME"
 
