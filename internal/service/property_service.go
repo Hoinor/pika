@@ -22,8 +22,6 @@ const (
 	PropertyIDNotificationChannels = "notification_channels"
 	// PropertyIDSystemConfig 系统配置的固定 ID
 	PropertyIDSystemConfig = "system_config"
-	// PropertyIDMetricsConfig 指标配置的固定 ID
-	PropertyIDMetricsConfig = "metrics_config"
 	// PropertyIDPublicIPConfig 公网 IP 采集配置的固定 ID
 	PropertyIDPublicIPConfig = "public_ip_config"
 	// PropertyIDAlertConfig 告警配置的固定 ID

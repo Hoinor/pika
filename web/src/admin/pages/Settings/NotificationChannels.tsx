@@ -103,7 +103,6 @@ const NotificationChannels = () => {
                     formValues.webhookEnabled = channel.enabled;
                     formValues.webhookUrl = channel.config?.url || '';
                     formValues.webhookMethod = channel.config?.method || 'POST';
-                    formValues.webhookBodyTemplate = channel.config?.bodyTemplate || 'json';
                     formValues.webhookCustomBody = channel.config?.customBody || '';
 
                     // 解析 headers 为数组形式方便编辑
@@ -223,7 +222,6 @@ const NotificationChannels = () => {
                     config: {
                         url: values.webhookUrl || '',
                         method: values.webhookMethod || 'POST',
-                        bodyTemplate: values.webhookBodyTemplate || 'json',
                         customBody: values.webhookCustomBody || '',
                         headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
                     },
@@ -715,8 +713,7 @@ const NotificationChannels = () => {
                         <Form.Item
                             noStyle
                             shouldUpdate={(prevValues, currentValues) =>
-                                prevValues.webhookEnabled !== currentValues.webhookEnabled ||
-                                prevValues.webhookBodyTemplate !== currentValues.webhookBodyTemplate
+                                prevValues.webhookEnabled !== currentValues.webhookEnabled
                             }
                         >
                             {({getFieldValue}) =>
@@ -750,50 +747,23 @@ const NotificationChannels = () => {
                                             />
                                         </Form.Item>
 
-                                        {/* 请求体模板 */}
+                                        {/* 自定义请求体 */}
                                         <Form.Item
-                                            label="请求体模板"
-                                            name="webhookBodyTemplate"
-                                            tooltip="选择请求体的格式"
+                                            label="自定义请求体"
+                                            name="webhookCustomBody"
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: '请输入自定义请求体模板'
+                                                }
+                                            ]}
+                                            tooltip="支持变量替换，可用变量见下方说明"
                                         >
-                                            <Select
-                                                placeholder="选择请求体模板"
-                                                options={[
-                                                    {
-                                                        label: 'JSON (默认)',
-                                                        value: 'json'
-                                                    },
-                                                    {
-                                                        label: 'Form 表单',
-                                                        value: 'form'
-                                                    },
-                                                    {
-                                                        label: '自定义模板',
-                                                        value: 'custom'
-                                                    },
-                                                ]}
+                                            <Input.TextArea
+                                                rows={6}
+                                                placeholder='示例: {"alert": "{{alert.message}}", "host": "{{agent.hostname}}"}'
                                             />
                                         </Form.Item>
-
-                                        {/* 自定义请求体 */}
-                                        {getFieldValue('webhookBodyTemplate') === 'custom' && (
-                                            <Form.Item
-                                                label="自定义请求体"
-                                                name="webhookCustomBody"
-                                                rules={[
-                                                    {
-                                                        required: true,
-                                                        message: '请输入自定义请求体模板'
-                                                    }
-                                                ]}
-                                                tooltip="支持变量替换，可用变量见下方说明"
-                                            >
-                                                <Input.TextArea
-                                                    rows={6}
-                                                    placeholder='示例: {"alert": "{{alert.message}}", "host": "{{agent.hostname}}"}'
-                                                />
-                                            </Form.Item>
-                                        )}
 
                                         {/* 自定义请求头 */}
                                         <Form.Item label="自定义请求头"

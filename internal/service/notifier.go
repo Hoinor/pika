@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -139,8 +138,11 @@ func maskIPAddress(ip string) string {
 	return "****"
 }
 
-func joinAgentIPs(ipv4 string, ipv6 string) string {
+func joinAgentIPs(ip string, ipv4 string, ipv6 string) string {
 	parts := make([]string, 0, 2)
+	if ip != "" {
+		parts = append(parts, ip)
+	}
 	if ipv4 != "" {
 		parts = append(parts, ipv4)
 	}
@@ -151,9 +153,13 @@ func joinAgentIPs(ipv4 string, ipv6 string) string {
 }
 
 func formatAgentIP(agent *models.Agent, mask bool) string {
+	ip := strings.TrimSpace(agent.IP)
 	ipv4 := strings.TrimSpace(agent.IPv4)
 	ipv6 := strings.TrimSpace(agent.IPv6)
 	if mask {
+		if ip != "" {
+			ip = maskIPAddress(ip)
+		}
 		if ipv4 != "" {
 			ipv4 = maskIPAddress(ipv4)
 		}
@@ -161,7 +167,7 @@ func formatAgentIP(agent *models.Agent, mask bool) string {
 			ipv6 = maskIPAddress(ipv6)
 		}
 	}
-	combined := joinAgentIPs(ipv4, ipv6)
+	combined := joinAgentIPs(ip, ipv4, ipv6)
 	if combined == "" {
 		return "-"
 	}
@@ -534,11 +540,10 @@ func (n *Notifier) sendEmail(ctx context.Context, smtpHost string, smtpPort int,
 
 // webhookConfig Webhook 配置
 type webhookConfig struct {
-	URL          string
-	Method       string
-	Headers      map[string]string
-	BodyTemplate string
-	CustomBody   string
+	URL        string
+	Method     string
+	Headers    map[string]string
+	CustomBody string
 }
 
 // parseWebhookConfig 解析 Webhook 配置
@@ -565,86 +570,21 @@ func parseWebhookConfig(config map[string]interface{}) (*webhookConfig, error) {
 		}
 	}
 
-	// 获取请求体模板类型，默认 json
-	bodyTemplate := "json"
-	if bt, ok := config["bodyTemplate"].(string); ok && bt != "" {
-		bodyTemplate = bt
-	}
-
 	// 获取自定义请求体
 	customBody, _ := config["customBody"].(string)
 
 	return &webhookConfig{
-		URL:          webhookURL,
-		Method:       method,
-		Headers:      headers,
-		BodyTemplate: bodyTemplate,
-		CustomBody:   customBody,
+		URL:        webhookURL,
+		Method:     method,
+		Headers:    headers,
+		CustomBody: customBody,
 	}, nil
 }
 
-// buildJSONBody 构建 JSON 格式的请求体
-func (n *Notifier) buildJSONBody(agent *models.Agent, record *models.AlertRecord, message string) (io.Reader, error) {
-	agentIP := joinAgentIPs(strings.TrimSpace(agent.IPv4), strings.TrimSpace(agent.IPv6))
-	body := map[string]interface{}{
-		"msg_type": "text",
-		"text": map[string]string{
-			"content": message,
-		},
-		"agent": map[string]interface{}{
-			"id":       agent.ID,
-			"name":     agent.Name,
-			"hostname": agent.Hostname,
-			"ip":       agentIP,
-			"ipv4":     agent.IPv4,
-			"ipv6":     agent.IPv6,
-		},
-		"alert": map[string]interface{}{
-			"type":        record.AlertType,
-			"level":       record.Level,
-			"status":      record.Status,
-			"message":     record.Message,
-			"threshold":   record.Threshold,
-			"actualValue": record.ActualValue,
-			"firedAt":     record.FiredAt,
-			"resolvedAt":  record.ResolvedAt,
-		},
-	}
-	data, err := json.Marshal(body)
-	if err != nil {
-		return nil, fmt.Errorf("序列化 JSON 失败: %w", err)
-	}
-	return bytes.NewReader(data), nil
-}
-
-// buildFormBody 构建 Form 表单格式的请求体
-func (n *Notifier) buildFormBody(agent *models.Agent, record *models.AlertRecord, message string) io.Reader {
-	agentIP := joinAgentIPs(strings.TrimSpace(agent.IPv4), strings.TrimSpace(agent.IPv6))
-	formData := url.Values{}
-	formData.Set("message", message)
-	formData.Set("agent_id", agent.ID)
-	formData.Set("agent_name", agent.Name)
-	formData.Set("agent_hostname", agent.Hostname)
-	formData.Set("agent_ip", agentIP)
-	formData.Set("agent_ipv4", agent.IPv4)
-	formData.Set("agent_ipv6", agent.IPv6)
-	formData.Set("alert_type", record.AlertType)
-	formData.Set("alert_level", record.Level)
-	formData.Set("alert_status", record.Status)
-	formData.Set("alert_message", record.Message)
-	formData.Set("threshold", fmt.Sprintf("%.2f", record.Threshold))
-	formData.Set("actual_value", fmt.Sprintf("%.2f", record.ActualValue))
-	formData.Set("fired_at", fmt.Sprintf("%d", record.FiredAt))
-	if record.ResolvedAt > 0 {
-		formData.Set("resolved_at", fmt.Sprintf("%d", record.ResolvedAt))
-	}
-	return strings.NewReader(formData.Encode())
-}
-
 // buildCustomBody 构建自定义模板格式的请求体
-func (n *Notifier) buildCustomBody(agent *models.Agent, record *models.AlertRecord, message, customBody string) (io.Reader, error) {
+func (n *Notifier) buildCustomBody(agent *models.Agent, record *models.AlertRecord, message, customBody string, maskIP bool) (io.Reader, error) {
 	if customBody == "" {
-		return nil, fmt.Errorf("使用 custom 模板时必须提供 customBody")
+		return nil, fmt.Errorf("必须提供自定义请求体模板")
 	}
 
 	// 使用 fasttemplate 进行变量替换
@@ -669,7 +609,7 @@ func (n *Notifier) buildCustomBody(agent *models.Agent, record *models.AlertReco
 		case "agent.hostname":
 			v = agent.Hostname
 		case "agent.ip":
-			v = joinAgentIPs(strings.TrimSpace(agent.IPv4), strings.TrimSpace(agent.IPv6))
+			v = agent.IP
 		case "agent.ipv4":
 			v = agent.IPv4
 		case "agent.ipv6":
@@ -758,34 +698,14 @@ func (n *Notifier) sendCustomWebhook(ctx context.Context, config map[string]inte
 	// 构建消息内容
 	message := n.buildMessage(agent, record, maskIP)
 
-	// 根据模板类型构建请求体
-	var reqBody io.Reader
-	var contentType string
-
-	switch cfg.BodyTemplate {
-	case "json":
-		reqBody, err = n.buildJSONBody(agent, record, message)
-		if err != nil {
-			return err
-		}
-		contentType = "application/json"
-
-	case "form":
-		reqBody = n.buildFormBody(agent, record, message)
-		contentType = "application/x-www-form-urlencoded"
-
-	case "custom":
-		reqBody, err = n.buildCustomBody(agent, record, message, cfg.CustomBody)
-		if err != nil {
-			return err
-		}
-		contentType = "text/plain"
-
-	default:
-		return fmt.Errorf("不支持的 bodyTemplate: %s", cfg.BodyTemplate)
+	// 构建自定义请求体
+	reqBody, err := n.buildCustomBody(agent, record, message, cfg.CustomBody, maskIP)
+	if err != nil {
+		return err
 	}
 
-	// 发送 HTTP 请求
+	// 发送 HTTP 请求，使用 application/json 作为默认 Content-Type
+	contentType := "application/json"
 	return n.sendHTTPRequest(ctx, cfg.Method, cfg.URL, reqBody, cfg.Headers, contentType)
 }
 
