@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type {Agent, LatestMetrics} from '@/types';
 import CompactResourceBar from '@portal/components/CompactResourceBar';
-import {formatBytes, formatSpeed, formatUptime} from '@portal/utils/util';
+import {formatBytes, formatSpeed, formatUptime} from '@/lib/format.ts';
 import CyberCard from "@portal/components/CyberCard.tsx";
 import {Link} from "react-router-dom";
 import {isExpired} from "@portal/utils/server.ts";

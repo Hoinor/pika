@@ -6,7 +6,7 @@ import {CustomTooltip} from '@portal/components/CustomTooltip';
 import {useMetricsQuery} from '@portal/hooks/server';
 import {TEMPERATURE_COLORS} from '@portal/constants/server';
 import {ChartContainer} from './ChartContainer';
-import {formatChartTime} from '@portal/utils/util';
+import {formatChartTime} from '@/lib/format.ts';
 
 interface TemperatureChartProps {
     agentId: string;

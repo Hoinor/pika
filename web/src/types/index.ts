@@ -34,16 +34,9 @@ export interface Agent {
     createdAt?: string;
     updatedAt?: string;
     // 流量统计相关字段
-    traffic?: TrafficData;        // 流量
     trafficStats?: TrafficStatsData; // 流量统计配置
     tamperProtectConfig?: TamperProtectConfig; // 防篡改保护配置
     sshLoginConfig?: SSHLoginConfigData; // SSH登录监控配置
-}
-
-export interface TrafficData {
-    enabled: boolean;
-    limit?: number;
-    used?: number;
 }
 
 export interface TrafficStatsData {
@@ -53,6 +46,8 @@ export interface TrafficStatsData {
     used: number;         // 当前周期已使用流量(字节)
     resetDay: number;     // 流量重置日期(1-31), 0表示不自动重置
     periodStart: number;  // 当前周期开始时间(时间戳毫秒)
+    periodEnd: number;    // 当前周期结束时间(时间戳毫秒)
+    daysUntilReset: number; // 距离重置的天数
     baselineRecv: number; // 当前周期流量基线(接收)
     baselineSend: number; // 当前周期流量基线(发送)
     alertSent80: boolean;

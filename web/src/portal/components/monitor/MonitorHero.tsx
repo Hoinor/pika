@@ -5,7 +5,7 @@ import {CertBadge} from './CertBadge';
 import LittleStatCard from '@portal/components/LittleStatCard';
 import type {PublicMonitor} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
-import {formatDateTime} from "@portal/utils/util.ts";
+import {formatDateTime} from "@/lib/format.ts";
 
 interface MonitorHeroProps {
     monitor: PublicMonitor;

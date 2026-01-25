@@ -2,7 +2,7 @@ import {AlertCircle, Clock, MapPin} from 'lucide-react';
 import {StatusBadge} from '@portal/components/StatusBadge';
 import {CertBadge} from './CertBadge';
 import {AGENT_COLORS} from '@portal/constants/colors';
-import {formatDateTime, formatTime} from '@portal/utils/util';
+import {formatDateTime, formatTime} from '@/lib/format.ts';
 import type {AgentMonitorStat} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
 
@@ -72,7 +72,8 @@ export const AgentStatsTable = ({monitorStats, monitorType}: AgentStatsTableProp
                             {monitorType === 'https' && stat.certExpiryTime && (
                                 <div className="pt-2 border-t border-slate-200 dark:border-cyan-900/30">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">证书:</span>
+                                        <span
+                                            className="text-xs text-gray-600 dark:text-cyan-500 font-mono">证书:</span>
                                         <CertBadge
                                             expiryTime={stat.certExpiryTime}
                                             daysLeft={stat.certDaysLeft}
@@ -150,7 +151,8 @@ export const AgentStatsTable = ({monitorStats, monitorType}: AgentStatsTableProp
                                 <td className="px-4 py-4">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-gray-600 dark:text-cyan-500"/>
-                                        <span className="text-sm font-semibold text-slate-800 dark:text-cyan-100 font-mono">
+                                        <span
+                                            className="text-sm font-semibold text-slate-800 dark:text-cyan-100 font-mono">
                                                 {formatTime(stat.responseTime)}
                                             </span>
                                     </div>

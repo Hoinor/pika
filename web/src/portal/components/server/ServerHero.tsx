@@ -1,5 +1,5 @@
 import {ArrowLeft} from 'lucide-react';
-import {formatBytes, formatDateTime, formatUptime} from '@portal/utils/util';
+import {formatBytes, formatDateTime, formatUptime} from '@/lib/format.ts';
 import type {Agent, LatestMetrics} from '@/types';
 import LittleStatCard from '@portal/components/LittleStatCard';
 import CyberCard from "@portal/components/CyberCard.tsx";

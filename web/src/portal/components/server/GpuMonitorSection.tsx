@@ -1,6 +1,6 @@
 import {Zap} from 'lucide-react';
 import {Card} from '@portal/components/Card';
-import {formatBytes} from '@portal/utils/util';
+import {formatBytes} from '@/lib/format.ts';
 import type {LatestMetrics} from '@/types';
 
 interface GpuMonitorSectionProps {

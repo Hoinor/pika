@@ -2,7 +2,7 @@ import {Cpu, HardDrive, MemoryStick, Network} from 'lucide-react';
 import {InfoGrid} from '@portal/components/server/InfoGrid';
 import {SnapshotSection} from '@portal/components/server/SnapshotSection';
 import type {SnapshotCardData} from '@portal/components/server/SnapshotGrid';
-import {formatBytes, formatDateTime, formatPercentValue, formatUptime} from '@portal/utils/util';
+import {formatBytes, formatDateTime, formatPercentValue, formatUptime} from '@/lib/format.ts';
 import type {Agent, LatestMetrics} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
 
@@ -50,6 +50,7 @@ export const SystemInfoSection = ({agent, latestMetrics}: SystemInfoSectionProps
         {label: '最近心跳', value: lastSeenDisplay},
         {label: '进程数', value: latestMetrics?.host?.procs ?? '-'},
         {label: '网络累计', value: networkSummary},
+        {label: 'Load', value: `${latestMetrics?.host?.load1?.toFixed(2)} / ${latestMetrics?.host?.load5?.toFixed(2)} / ${latestMetrics?.host?.load15?.toFixed(2)}`},
     ];
 
     // 快照卡片

@@ -6,7 +6,7 @@ import {useMemo} from "react";
 import CyberCard from "@portal/components/CyberCard.tsx";
 import {StatusBadge} from "@portal/components/StatusBadge";
 import {CertBadge} from "@portal/components/monitor/CertBadge.tsx";
-import {formatDateTime} from "@portal/utils/util.ts";
+import {formatDateTime} from "@/lib/format.ts";
 import {MiniChart} from "@portal/components/monitor/MiniChart.tsx";
 import {TypeIcon} from "@portal/components/monitor/TypeIcon";
 

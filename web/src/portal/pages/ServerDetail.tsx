@@ -48,6 +48,7 @@ const ServerDetail = () => {
     const formatLoad = (value?: number) => (
         typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '-'
     );
+
     const deviceIpInterfaces = (latestMetrics?.networkInterfaces || [])
         .map((netInterface) => ({
             name: netInterface.interface,
@@ -86,18 +87,6 @@ const ServerDetail = () => {
 
                     {/* 系统信息 */}
                     <SystemInfoSection agent={agent} latestMetrics={latestMetrics}/>
-
-                    {/* 系统负载 */}
-                    <Card
-                        title="系统负载"
-                        description="最近 1/5/15 分钟平均负载"
-                    >
-                        <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-                            <LittleStatCard label="1 MIN" value={formatLoad(latestMetrics?.host?.load1)}/>
-                            <LittleStatCard label="5 MIN" value={formatLoad(latestMetrics?.host?.load5)}/>
-                            <LittleStatCard label="15 MIN" value={formatLoad(latestMetrics?.host?.load15)}/>
-                        </div>
-                    </Card>
 
                     {/* 历史趋势图表 */}
                     <Card

@@ -73,13 +73,9 @@ func (h *AgentHandler) buildAgentListItem(agent models.Agent, isAuthenticated bo
 
 	trafficStats := agent.TrafficStats.Data()
 	if trafficStats.Enabled {
-		item["traffic"] = map[string]any{
-			"enabled": true,
-			"limit":   trafficStats.Limit,
-			"used":    trafficStats.Used,
-		}
+		item["trafficStats"] = trafficStats
 	} else {
-		item["traffic"] = map[string]any{
+		item["trafficStats"] = map[string]any{
 			"enabled": false,
 		}
 	}

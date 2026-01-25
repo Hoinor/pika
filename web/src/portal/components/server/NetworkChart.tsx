@@ -6,7 +6,7 @@ import {CustomTooltip} from '@portal/components/CustomTooltip';
 import {useMetricsQuery, useNetworkInterfacesQuery} from '@portal/hooks/server';
 import {INTERFACE_COLORS} from '@portal/constants/server';
 import {ChartContainer} from './ChartContainer';
-import {formatChartTime} from '@portal/utils/util';
+import {formatChartTime} from '@/lib/format.ts';
 
 interface NetworkChartProps {
     agentId: string;

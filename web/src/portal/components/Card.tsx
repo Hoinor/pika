@@ -2,8 +2,8 @@ import type {ReactNode} from 'react';
 import CyberCard from "@portal/components/CyberCard.tsx";
 
 interface CardProps {
-    title?: string;
-    description?: string;
+    title?: ReactNode;
+    description?: ReactNode;
     action?: ReactNode;
     children: ReactNode;
     className?: string;

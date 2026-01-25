@@ -1,6 +1,6 @@
 import type {FC} from 'react';
 import {ArrowDown, ArrowUp, Network} from 'lucide-react';
-import {formatBytes, formatSpeed} from '@portal/utils/util';
+import {formatBytes, formatSpeed} from '@/lib/format.ts';
 import {cn} from "@/lib/utils.ts";
 
 interface NetworkStatCardProps {

@@ -10,7 +10,7 @@ import CyberCard from "@portal/components/CyberCard.tsx";
 import {ChartPlaceholder} from "@portal/components/ChartPlaceholder";
 import {CustomTooltip} from "@portal/components/CustomTooltip";
 import {TimeRangeSelector} from "@portal/components/TimeRangeSelector";
-import {formatChartTime} from '@portal/utils/util';
+import {formatChartTime} from '@/lib/format.ts';
 
 interface ResponseTimeChartProps {
     monitorId: string;
